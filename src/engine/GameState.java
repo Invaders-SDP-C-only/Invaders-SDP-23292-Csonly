@@ -21,6 +21,8 @@ public class GameState {
 	private int shipsDestroyed;
     /** Current coin. */
     private int coin;
+	/** PlayerCount */
+	private int playerCount;
 
 
 	/**
@@ -43,7 +45,7 @@ public class GameState {
 	 */
 	public GameState(final int level, final int score,
 			final int livesRemaining,final int livesRemainingP2, final int bulletsShot,
-			final int shipsDestroyed, final int coin) {
+			final int shipsDestroyed, final int coin, final int playerCount) {
 		this.level = level;
 		this.score = score;
 		this.livesRemaining = livesRemaining;
@@ -51,6 +53,7 @@ public class GameState {
 		this.bulletsShot = bulletsShot;
         this.shipsDestroyed = shipsDestroyed;
         this.coin = coin;
+		this.playerCount = playerCount;
 		    }
 	/**
 	 * @return the level
@@ -90,6 +93,11 @@ public class GameState {
 	public final int getShipsDestroyed() {
 		return shipsDestroyed;
 	}
+
+	/**
+	 * @return the PlayerCount
+	 */
+	public final int getPlayerCount() {return this.playerCount;}
 
     public final int getCoin() { return coin; }
 
