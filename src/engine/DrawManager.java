@@ -714,3 +714,11 @@ public final class DrawManager {
 
     	public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
 }
+{
+	private BufferedImage explosionImage;
+	explosionImage = loadImage("res/explosion.png");
+	public void drawExplosionImage(int x, int y, int width, int height) {
+    this.graphics.drawImage(explosionImage, x, y, width, height, null);
+}
+
+
