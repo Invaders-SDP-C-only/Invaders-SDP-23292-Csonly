@@ -61,6 +61,22 @@ public final class DrawManager {
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
 
+    // === Mode Select UI layout constants ===
+    private static final int MODE_TITLE_Y = 160;
+    private static final int MODE_1P_Y = 230;
+    private static final int MODE_2P_Y = 270;
+    private static final int MODE_BACK_Y = 310;
+    private static final int MODE_CONFIRM_Y = 370;
+
+    private static final int PIXEL_SCALE = 2;
+    private static final int SHIP_SPRITE_W = 13;
+    private static final int SHIP_SPRITE_H = 8;
+    private static final int SHIP_W = SHIP_SPRITE_W * PIXEL_SCALE;
+    private static final int SHIP_H = SHIP_SPRITE_H * PIXEL_SCALE;
+
+    private static final int GAP_TEXT_ICON = 10;
+    private static final int GAP_BETWEEN_SHIPS = 12;
+
 	/** Reusable dummy ship for UI drawing (to avoid per-frame allocations). */
 	private final Ship uiShip;
 
@@ -703,7 +719,7 @@ public final class DrawManager {
 			float relY = star.baseY - centerY;
 
 			double rotatedX = relX * cosAngle - relY * sinAngle;
-			double rotatedY = relX  * sinAngle + relY * cosAngle;
+			double rotatedY = relX * sinAngle + relY * cosAngle;
 
 			int screenX = (int) (rotatedX + centerX);
 			int screenY = (int) (rotatedY + centerY);
@@ -720,38 +736,35 @@ public final class DrawManager {
     	public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
     public void drawModeSelectMenu(final screen.Screen screen, final int selection) {
         backBufferGraphics.setColor(Color.GREEN);
-        drawCenteredBigString(screen, "SELECT  PLAYER  MODE", 160);
+        drawCenteredBigString(screen, "SELECT  PLAYER  MODE", MODE_TITLE_Y);
 
         float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
         Color pulseColor = new Color(0, 0.5f + pulse * 0.5f, 0);
 
-        if (selection == 0) backBufferGraphics.setColor(pulseColor);
-        else backBufferGraphics.setColor(Color.WHITE);
-        drawCenteredRegularString(screen, " 1 PLAYER ", 230);
+        backBufferGraphics.setColor(selection == 0 ? pulseColor : Color.WHITE);
+        drawCenteredRegularString(screen, " 1 PLAYER ", MODE_1P_Y);
 
-        if (selection == 1) backBufferGraphics.setColor(pulseColor);
-        else backBufferGraphics.setColor(Color.WHITE);
-        drawCenteredRegularString(screen, " 2 PLAYER ", 270);
+        backBufferGraphics.setColor(selection == 1 ? pulseColor : Color.WHITE);
+        drawCenteredRegularString(screen, " 2 PLAYER ", MODE_2P_Y);
 
-        if (selection == 2) backBufferGraphics.setColor(pulseColor);
-        else backBufferGraphics.setColor(Color.WHITE);
-        drawCenteredRegularString(screen, "< BACK TO MAIN MENU >", 310);
+        backBufferGraphics.setColor(selection == 2 ? pulseColor : Color.WHITE);
+        drawCenteredRegularString(screen, "< BACK TO MAIN MENU >", MODE_BACK_Y);
 
-        int y1 = 230;
-        int y2 = 270;
+        int y1 = MODE_1P_Y;
+        int y2 = MODE_2P_Y;
         int mid1 = y1 - fontRegularMetrics.getAscent() / 2;
         int mid2 = y2 - fontRegularMetrics.getAscent() / 2;
 
-        int shipW = 13 * 2;
-        int shipH = 8 * 2;
+        int shipW = SHIP_W;
+        int shipH = SHIP_H;
         int shipY1 = mid1 - shipH / 2;
         int shipY2 = mid2 - shipH / 2;
 
         int centerX = screen.getWidth() / 2;
         int textW1 = fontRegularMetrics.stringWidth(" 1 PLAYER ");
         int textW2 = fontRegularMetrics.stringWidth(" 2 PLAYER ");
-        int gap = 10;
-        int shipGap = 12;
+        int gap = GAP_TEXT_ICON;
+        int shipGap = GAP_BETWEEN_SHIPS;
 
         int textLeft1 = centerX - textW1 / 2;
         int rightEdge1 = textLeft1 - gap;
@@ -770,6 +783,6 @@ public final class DrawManager {
         drawEntity(uiShip, shipX2b, shipY2);
 
         backBufferGraphics.setColor(Color.GRAY);
-        drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+        drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", MODE_CONFIRM_Y);
     }
 }
