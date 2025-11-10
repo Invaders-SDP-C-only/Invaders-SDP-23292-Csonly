@@ -61,6 +61,9 @@ public final class DrawManager {
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
 
+	/** Reusable dummy ship for UI drawing (to avoid per-frame allocations). */
+	private final Ship uiShip;
+
 	/** Sprite types. */
 	public static enum SpriteType {
 		Ship, ShipDestroyed, Bullet, EnemyBullet, EnemyShipA1, EnemyShipA2,
@@ -120,6 +123,8 @@ public final class DrawManager {
 		} catch (FontFormatException e) {
 			logger.warning("Font formatting failed.");
 		}
+		// Reusable ship for menus (color will be set before drawing)
+		this.uiShip = new Ship(0, 0, Color.WHITE);
 	}
 
 	/**
@@ -678,7 +683,7 @@ public final class DrawManager {
 
 	/**
 	 * Draws the starfield background.
-	 * 
+	 *
 	 * @param screen
 	 *            Screen to draw on.
 	 * @param stars
@@ -751,7 +756,8 @@ public final class DrawManager {
         int textLeft1 = centerX - textW1 / 2;
         int rightEdge1 = textLeft1 - gap;
         int shipX1 = rightEdge1 - shipW;
-        drawEntity(new Ship(0, 0, (selection == 0) ? new Color(0,200,0) : Color.DARK_GRAY), shipX1, shipY1);
+        uiShip.setColor((selection == 0) ? new Color(0,200,0) : Color.DARK_GRAY);
+        drawEntity(uiShip, shipX1, shipY1);
 
         int textLeft2 = centerX - textW2 / 2;
         int rightEdge2 = textLeft2 - gap;
@@ -759,8 +765,9 @@ public final class DrawManager {
         int shipX2a = rightEdge2 - shipsTotalW;
         int shipX2b = shipX2a + shipW + shipGap;
         Color twoPColor = (selection == 1) ? new Color(0,200,0) : Color.DARK_GRAY;
-        drawEntity(new Ship(0, 0, twoPColor), shipX2a, shipY2);
-        drawEntity(new Ship(0, 0, twoPColor), shipX2b, shipY2);
+        uiShip.setColor(twoPColor);
+        drawEntity(uiShip, shipX2a, shipY2);
+        drawEntity(uiShip, shipX2b, shipY2);
 
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);

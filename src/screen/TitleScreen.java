@@ -64,7 +64,7 @@ public class TitleScreen extends Screen {
 	/**
 	 * A simple class to represent a background enemy.
 	 */
-	private static class BackgroundEnemy extends Entity {
+	public static class BackgroundEnemy extends Entity {
 		private int speed;
 
 		public BackgroundEnemy(int positionX, int positionY, int speed, SpriteType spriteType) {
@@ -259,10 +259,27 @@ public class TitleScreen extends Screen {
 				nextMenuItem();
 				this.selectionCooldown.reset();
 			}
-			if (inputManager.isKeyDown(KeyEvent.VK_SPACE)){
+			if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
 				if (this.returnCode != 5) {
-					this.isRunning = false;
+					if (this.returnCode == 2) {
+						ModeSelectScreen ms = new ModeSelectScreen(
+								this.getWidth(), this.getHeight(), 60,
+								this.stars, this.currentAngle
+						);
+						ms.run();
+						String mode = ms.getSelectedMode(); // "1P" | "2P" | "CANCEL"
+
+						if (!"CANCEL".equals(mode)) {
+							engine.Core.setSelectedMode(mode);
+							this.isRunning = false; // proceed to game
+						} else {
+							this.selectionCooldown.reset(); // stay on title
+						}
+					} else {
+						this.isRunning = false; // other menus
+					}
 				} else {
+					// sound button toggle
 					this.soundButton.changeSoundState();
 
 					if (SoundButton.getIsSoundOn()) {

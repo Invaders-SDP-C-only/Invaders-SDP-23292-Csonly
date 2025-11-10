@@ -25,25 +25,12 @@ public class ModeSelectScreen extends Screen {
     private boolean inputArmed = false;
 
     // Enemy background (same feel as TitleScreen)
-    private List<Entity> backgroundEnemies;
+    private List<TitleScreen.BackgroundEnemy> backgroundEnemies;
     private Cooldown enemySpawnCooldown;
     private Random random;
 
     private static final int ENEMY_SPAWN_COOLDOWN = 2000;
     private static final double ENEMY_SPAWN_CHANCE = 0.3;
-
-    /** Simple background enemy used for the animated menu scene. */
-    private static class BackgroundEnemy extends Entity {
-        private final int speed;
-
-        public BackgroundEnemy(int positionX, int positionY, int speed, SpriteType spriteType) {
-            super(positionX, positionY, 12 * 2, 8 * 2, java.awt.Color.WHITE);
-            this.speed = speed;
-            this.spriteType = spriteType;
-        }
-
-        public int getSpeed() { return speed; }
-    }
 
     public ModeSelectScreen(final int width, final int height, final int fps) {
         this(width, height, fps, null, 0f);
@@ -74,7 +61,7 @@ public class ModeSelectScreen extends Screen {
         }
 
         // Background enemies animation (independent of TitleScreen enemies)
-        this.backgroundEnemies = new ArrayList<Entity>();
+        this.backgroundEnemies = new ArrayList<>();
         this.enemySpawnCooldown = Core.getCooldown(ENEMY_SPAWN_COOLDOWN);
         this.enemySpawnCooldown.reset();
         this.random = new Random();
@@ -103,13 +90,13 @@ public class ModeSelectScreen extends Screen {
                 SpriteType randomEnemyType = enemyTypes[random.nextInt(enemyTypes.length)];
                 int randomX = (int) (Math.random() * this.getWidth());
                 int speed = random.nextInt(2) + 1;
-                this.backgroundEnemies.add(new BackgroundEnemy(randomX, -20, speed, randomEnemyType));
+                this.backgroundEnemies.add(new TitleScreen.BackgroundEnemy(randomX, -20, speed, randomEnemyType));
             }
         }
 
-        java.util.Iterator<Entity> enemyIterator = this.backgroundEnemies.iterator();
+        java.util.Iterator<TitleScreen.BackgroundEnemy> enemyIterator = this.backgroundEnemies.iterator();
         while (enemyIterator.hasNext()) {
-            BackgroundEnemy enemy = (BackgroundEnemy) enemyIterator.next();
+            TitleScreen.BackgroundEnemy enemy = enemyIterator.next();
             enemy.setPositionY(enemy.getPositionY() + enemy.getSpeed());
             if (enemy.getPositionY() > this.getHeight()) {
                 enemyIterator.remove();
@@ -178,7 +165,7 @@ public class ModeSelectScreen extends Screen {
         final int centerX = this.getWidth() / 2;
         final int centerY = this.getHeight() / 2;
 
-        for (Entity enemy : this.backgroundEnemies) {
+        for (TitleScreen.BackgroundEnemy enemy : this.backgroundEnemies) {
             float relX = enemy.getPositionX() - centerX;
             float relY = enemy.getPositionY() - centerY;
 

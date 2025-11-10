@@ -42,6 +42,19 @@ public final class Core {
 	/** Levels between extra life. */
 	private static final int EXTRA_LIFE_FRECUENCY = 3;
 
+	/** Selected player mode; set by ModeSelectScreen ("1P" or "2P"). */
+	private static String selectedMode = "1P";
+
+	/** Sets the selected player mode. */
+	public static void setSelectedMode(final String m) {
+	    selectedMode = (m == null ? "1P" : m);
+	}
+
+	/** Gets the selected player mode. */
+	public static String getSelectedMode() {
+	    return selectedMode;
+	}
+
 	/** Frame to draw the screen on. */
 	private static Frame frame;
 	/** Screen currently shown. */
