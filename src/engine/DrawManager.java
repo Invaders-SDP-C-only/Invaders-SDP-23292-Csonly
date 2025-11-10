@@ -111,7 +111,7 @@ public final class DrawManager {
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
 
-			explosionImage = fileManager.loadImage("res/explosion.png");
+			explosionImage = fileManager.loadImage("explosion.png");
 
 			fontRegular = fileManager.loadFont(14f);
 			fontBig = fileManager.loadFont(24f);
