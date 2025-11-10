@@ -21,7 +21,7 @@ public class GameState {
 	private int shipsDestroyed;
     /** Current coin. */
     private int coin;
-	/** PlayerCount */
+	/** Number of players in the game (1 or 2).*/
 	private int playerCount;
 
 
@@ -54,7 +54,7 @@ public class GameState {
         this.shipsDestroyed = shipsDestroyed;
         this.coin = coin;
 		this.playerCount = playerCount;
-		    }
+	}
 	/**
 	 * @return the level
 	 */
@@ -95,7 +95,7 @@ public class GameState {
 	}
 
 	/**
-	 * @return the PlayerCount
+	 * @return the number of players.
 	 */
 	public final int getPlayerCount() {return this.playerCount;}
 
