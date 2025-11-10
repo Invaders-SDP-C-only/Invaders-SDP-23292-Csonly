@@ -718,7 +718,7 @@ public final class DrawManager {
   public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
 	
 	public void drawExplosionImage(int x, int y, int width, int height) {
-  	graphics.drawImage(explosionImage, x, y, width, height, null);
+  	backBufferGraphics.drawImage(explosionImage, x, y, width, height, null);
 	}
 }
 

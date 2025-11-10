@@ -101,20 +101,10 @@ public final class FileManager {
 	}
 
 	public BufferedImage loadImage(final String path) throws IOException {
-		InputStream inputStream = null;
-		BufferedImage image;
-
-		try {
-			// Image loading.
-			inputStream = FileManager.class.getClassLoader()
-					.getResourceAsStream(path);
-			image = javax.imageio.ImageIO.read(inputStream);
-		} finally {
-			if (inputStream != null)
-				inputStream.close();
+		try (InputStream inputStream = FileManager.class.getClassLoader()
+				.getResourceAsStream(path)) {
+			return javax.imageio.ImageIO.read(inputStream);
 		}
-
-		return image;
 	}
 
 	/**
