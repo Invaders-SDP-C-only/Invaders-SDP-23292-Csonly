@@ -58,7 +58,7 @@ public final class DrawManager {
   /** Small sized font properties. */
   private static FontMetrics fontSmallMetrics;
 	/** Explosion image. */
-	private static BufferedImage explosionImage;
+	private BufferedImage explosionImage;
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
 
