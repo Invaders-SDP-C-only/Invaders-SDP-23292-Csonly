@@ -15,6 +15,9 @@ import engine.GameTimer;
 import engine.AchievementManager;
 import engine.ItemHUDManager;
 import entity.*;
+import engine.EffectManager; 
+import entity.ExplosionEntity; 
+import java.util.Random;       
 import java.awt.event.KeyEvent;
 import java.util.HashSet;
 import java.util.Set;
@@ -357,6 +360,8 @@ public class GameScreen extends Screen {
 		cleanBullets();
 		draw();
 
+		EffectManager.getInstance().update();
+		
 		if (((this.livesP1 == 0) && (this.shipP2 == null || this.livesP2 == 0)) && !this.levelFinished) {
 			this.levelFinished = true;
 			this.screenFinishedCooldown.reset();
@@ -419,6 +424,10 @@ public class GameScreen extends Screen {
 
 		enemyShipFormation.draw();
 
+		for (ExplosionEntity effect : EffectManager.getInstance().getEffects()) {
+            drawManager.drawEntity(effect, effect.getPositionX(), effect.getPositionY());
+        }
+		
 		if(this.omegaBoss != null) {
 			this.omegaBoss.draw(drawManager);
 		}
@@ -619,6 +628,17 @@ public class GameScreen extends Screen {
                         addPointsFor(bullet, pts);
                         this.coin += (pts / 10);
 						this.finalBoss.destroy();
+
+						audio.SoundManager.play("sfx/gameover.wav");
+
+                        Random rand = new Random();
+                        for (int i = 0; i < 20; i++) {
+                            int explosionX = this.finalBoss.getPositionX() + rand.nextInt(this.finalBoss.getWidth());
+                            int explosionY = this.finalBoss.getPositionY() + rand.nextInt(this.finalBoss.getHeight());
+                            
+                            EffectManager.getInstance().createExplosion(explosionX, explosionY);
+                        }
+						
                         AchievementManager.getInstance().unlockAchievement("Boss Slayer");
 					}
 					recyclable.add(bullet);
