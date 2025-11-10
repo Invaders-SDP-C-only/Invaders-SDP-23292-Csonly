@@ -6,6 +6,7 @@ import java.awt.Color;
 
 import engine.Cooldown;
 import engine.Core;
+import engine.DrawManager;
 import engine.DrawManager.SpriteType;
 
 /**
@@ -219,4 +220,17 @@ public class EnemyShip extends Entity {
 				return null;
 		}
 	}
+
+	public void drawExplosion(final DrawManager drawManager) {
+	    if (this.isDestroyed && !this.isExplosionFinished()) {
+	        drawManager.drawExplosionImage(
+	            this.positionX,
+	            this.positionY,
+	            this.width,
+	            this.height
+	        );
+	    }
+	}
 }
+	
+	

@@ -54,10 +54,11 @@ public final class DrawManager {
 	/** Big sized font properties. */
 	private static FontMetrics fontBigMetrics;
 	/** Small sized font for credits. */
-    private static Font fontSmall;
-    /** Small sized font properties. */
-    private static FontMetrics fontSmallMetrics;
-
+  private static Font fontSmall;
+  /** Small sized font properties. */
+  private static FontMetrics fontSmallMetrics;
+	/** Explosion image. */
+	private BufferedImage explosionImage;
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
 
@@ -109,6 +110,8 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.OmegaBossDeath, new boolean[16][16]);
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
+
+			explosionImage = fileManager.loadImage("explosion.png");
 
 			fontRegular = fileManager.loadFont(14f);
 			fontBig = fileManager.loadFont(24f);
@@ -712,5 +715,12 @@ public final class DrawManager {
 		}
 	}
 
-    	public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
+  public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
+	
+	public void drawExplosionImage(int x, int y, int width, int height) {
+  	backBufferGraphics.drawImage(explosionImage, x, y, width, height, null);
+	}
 }
+
+
+
