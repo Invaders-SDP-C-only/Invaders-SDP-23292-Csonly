@@ -2,6 +2,7 @@ package engine;
 
 import java.awt.Font;
 import java.awt.FontFormatException;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -96,6 +97,13 @@ public final class FileManager {
 		} finally {
 			if (inputStream != null)
 				inputStream.close();
+		}
+	}
+
+	public BufferedImage loadImage(final String path) throws IOException {
+		try (InputStream inputStream = FileManager.class.getClassLoader()
+				.getResourceAsStream(path)) {
+			return javax.imageio.ImageIO.read(inputStream);
 		}
 	}
 

@@ -101,12 +101,14 @@ public final class Core {
 		int height = frame.getHeight();
 
 		levelManager = new LevelManager();
-		GameState gameState = new GameState(1, 0, MAX_LIVES, MAX_LIVES, 0, 0,0);
+		GameState gameState = new GameState(1, 0, MAX_LIVES, MAX_LIVES, 0, 0,0, 1);
 
 
         int returnCode = 1;
 		do {
-            gameState = new GameState(1, 0, MAX_LIVES,MAX_LIVES, 0, 0,gameState.getCoin());
+			int currentCoins = gameState.getCoin();
+			int playerCount = TitleScreen.getSelectPlayerCount();
+            gameState = new GameState(1, 0, MAX_LIVES,MAX_LIVES, 0, 0,currentCoins, playerCount );
 			switch (returnCode) {
                 case 1:
                     // Main menu.
@@ -133,7 +135,7 @@ public final class Core {
                     }
 
                     do {
-                        // One extra life every few levels
+                        // One extra life every few levelsa
                         boolean bonusLife = gameState.getLevel()
                                 % EXTRA_LIFE_FRECUENCY == 0
                                 && gameState.getLivesRemaining() < MAX_LIVES;
@@ -190,7 +192,8 @@ public final class Core {
 									gameState.getLivesRemainingP2(),   // Keep remaining livesP2
                                     gameState.getBulletsShot(),        // Keep bullets fired
                                     gameState.getShipsDestroyed(),     // Keep ships destroyed
-                                    gameState.getCoin()                // Keep current coins
+                                    gameState.getCoin(),               // Keep current coins
+									playerCount						   // Keep plyaer Count
                             );
                         }
                         // Loop while player still has lives and levels remaining
