@@ -64,7 +64,7 @@
 		/**
 		 * A simple class to represent a background enemy.
 		 */
-		private static class BackgroundEnemy extends Entity {
+		static class BackgroundEnemy extends Entity {
 			private int speed;
 
 			public BackgroundEnemy(int positionX, int positionY, int speed, SpriteType spriteType) {
@@ -246,34 +246,35 @@
 				this.soundButton.setColor(Color.WHITE);
 			}
 			if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
-				if (this.returnCode != 5) {
-					if (this.returnCode == 2) {
-						ModeSelectScreen ms = new ModeSelectScreen(
-								this.getWidth(), this.getHeight(), 60,
-								this.stars, this.currentAngle
-						);
-						ms.run();
-						String mode = ms.getSelectedMode(); // "1P" | "2P" | "CANCEL"
+                if (this.returnCode != 5) {
+                    if (this.returnCode == 2) {
+                        ModeSelectScreen ms = new ModeSelectScreen(
+                                this.getWidth(), this.getHeight(), 60,
+                                this.stars, this.currentAngle
+                        );
+                        ms.run();
+                        String mode = ms.getSelectedMode(); // "1P" | "2P" | "CANCEL"
 
-						if (!"CANCEL".equals(mode)) {
-							engine.Core.setSelectedMode(mode);
-							this.isRunning = false; // proceed to game
-						} else {
-							this.selectionCooldown.reset(); // stay on title
-						}
-					} else {
-						this.isRunning = false; // other menus
-					}
-				} else {
-					// sound button toggle
-					this.soundButton.changeSoundState();
+                        if (!"CANCEL".equals(mode)) {
+                            engine.Core.setSelectedMode(mode);
+                            this.isRunning = false; // proceed to game
+                        } else {
+                            this.selectionCooldown.reset(); // stay on title
+                        }
+                    } else {
+                        this.isRunning = false; // other menus
+                    }
+                } else {
+                    // sound button toggle
+                    this.soundButton.changeSoundState();
 
-					if (SoundButton.getIsSoundOn()) {
-						SoundManager.uncutAllSound();
-					} else {
-						SoundManager.cutAllSound();
-					}
-
+                    if (SoundButton.getIsSoundOn()) {
+                        SoundManager.uncutAllSound();
+                    } else {
+                        SoundManager.cutAllSound();
+                    }
+                }
+            }
 			draw();
 			if (this.selectionCooldown.checkFinished()
 					&& this.inputDelay.checkFinished()) {

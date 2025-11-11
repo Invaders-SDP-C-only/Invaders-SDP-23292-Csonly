@@ -787,11 +787,10 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", MODE_CONFIRM_Y);
     }
-}
-  public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
+    public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
 	
 	public void drawExplosionImage(int x, int y, int width, int height) {
-  	backBufferGraphics.drawImage(explosionImage, x, y, width, height, null);
+  	    backBufferGraphics.drawImage(explosionImage, x, y, width, height, null);
 	}
 }
 
