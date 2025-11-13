@@ -173,8 +173,15 @@ public class GameScreen extends Screen {
 				this.livesP2 = gameState.getLivesRemainingP2();
 		        this.gameState = gameState;
 				if (this.bonusLife) {
-					this.livesP1++;
-					this.livesP2++;
+                    if (this.bonusLife) {
+                        if (this.livesP1 > 0 && this.livesP1 < this.maxLives) {
+                            this.livesP1++;
+                        }
+                        // 1P 모드에서는 livesP2 == 0이므로 여기 안 타고, 2P에서만 유효
+                        if (this.livesP2 > 0 && this.livesP2 < this.maxLives) {
+                            this.livesP2++;
+                        }
+                    }
 				}
 		this.bulletsShot = gameState.getBulletsShot();
 		this.shipsDestroyed = gameState.getShipsDestroyed();
@@ -190,8 +197,15 @@ public class GameScreen extends Screen {
         enemyShipFormation = new EnemyShipFormation(this.currentLevel);
 		enemyShipFormation.attach(this);
         this.enemyShipFormation.applyEnemyColorByLevel(this.currentLevel);
-		this.ship = new Ship(this.width / 2 - 100, ITEMS_SEPARATION_LINE_HEIGHT - 20,Color.green);
-		    this.ship.setPlayerId(1);   //=== [ADD] Player 1 ===
+        this.ship = new Ship(this.width / 2 - 100, ITEMS_SEPARATION_LINE_HEIGHT - 20, Color.green);
+        this.ship.setPlayerId(1);
+
+        if (this.livesP2 > 0) {
+            this.shipP2 = new Ship(this.width / 2 + 100, ITEMS_SEPARATION_LINE_HEIGHT - 20, Color.pink);
+            this.shipP2.setPlayerId(2);
+        } else {
+            this.shipP2 = null; // 1P 모드에서는 명시적으로 null
+        }
 
         this.shipP2 = new Ship(this.width / 2 + 100, ITEMS_SEPARATION_LINE_HEIGHT - 20,Color.pink);
         this.shipP2.setPlayerId(2); // === [ADD] Player2 ===

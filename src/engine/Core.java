@@ -129,9 +129,10 @@ public final class Core {
 
                     // ===== Main game loop across levels =====
                     do {
-                        // Extra life rule
-                        boolean bonusLife = gameState.getLevel() % EXTRA_LIFE_FRECUENCY == 0
-                                && gameState.getLivesRemaining() < MAX_LIVES;
+                        boolean isBonusLevel = gameState.getLevel() % EXTRA_LIFE_FRECUENCY == 0;
+                        boolean p1CanGain   = gameState.getLivesRemaining()    > 0 && gameState.getLivesRemaining()    < MAX_LIVES;
+                        boolean p2CanGain   = gameState.getLivesRemainingP2()  > 0 && gameState.getLivesRemainingP2()  < MAX_LIVES;
+                        boolean bonusLife   = isBonusLevel && (p1CanGain || p2CanGain);
 
                         // Level music
                         SoundManager.stopAll();
