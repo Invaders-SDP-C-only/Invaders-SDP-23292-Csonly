@@ -46,7 +46,7 @@ public class Screen {
 	/**
 	 * Constructor, establishes the properties of the screen.
 	 * 
-	 * @param width
+	 * @param width\
 	 *            Screen width.
 	 * @param height
 	 *            Screen height.
