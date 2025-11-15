@@ -54,11 +54,10 @@ public final class DrawManager {
 	/** Big sized font properties. */
 	private static FontMetrics fontBigMetrics;
 	/** Small sized font for credits. */
-  private static Font fontSmall;
-  /** Small sized font properties. */
-  private static FontMetrics fontSmallMetrics;
-	/** Explosion image. */
-	private BufferedImage explosionImage;
+    private static Font fontSmall;
+    /** Small sized font properties. */
+    private static FontMetrics fontSmallMetrics;
+
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
 
@@ -110,8 +109,6 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.OmegaBossDeath, new boolean[16][16]);
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
-
-			explosionImage = fileManager.loadImage("explosion.png");
 
 			fontRegular = fileManager.loadFont(14f);
 			fontBig = fileManager.loadFont(24f);
@@ -701,7 +698,7 @@ public final class DrawManager {
 			float relY = star.baseY - centerY;
 
 			double rotatedX = relX * cosAngle - relY * sinAngle;
-			double rotatedY = relX * sinAngle + relY * cosAngle;
+			double rotatedY = relX  * sinAngle + relY * cosAngle;
 
 			int screenX = (int) (rotatedX + centerX);
 			int screenY = (int) (rotatedY + centerY);
@@ -715,12 +712,57 @@ public final class DrawManager {
 		}
 	}
 
-  public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
-	
-	public void drawExplosionImage(int x, int y, int width, int height) {
-  	backBufferGraphics.drawImage(explosionImage, x, y, width, height, null);
-	}
+    	public void drawShootingStars(final Screen screen, final List<ShootingStar> shootingStars, final float angle) {    }
+    public void drawModeSelectMenu(final screen.Screen screen, final int selection) {
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredBigString(screen, "SELECT  PLAYER  MODE", 160);
+
+        float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
+        Color pulseColor = new Color(0, 0.5f + pulse * 0.5f, 0);
+
+        if (selection == 0) backBufferGraphics.setColor(pulseColor);
+        else backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, " 1 PLAYER ", 230);
+
+        if (selection == 1) backBufferGraphics.setColor(pulseColor);
+        else backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, " 2 PLAYER ", 270);
+
+        if (selection == 2) backBufferGraphics.setColor(pulseColor);
+        else backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "< BACK TO MAIN MENU >", 310);
+
+        int y1 = 230;
+        int y2 = 270;
+        int mid1 = y1 - fontRegularMetrics.getAscent() / 2;
+        int mid2 = y2 - fontRegularMetrics.getAscent() / 2;
+
+        int shipW = 13 * 2;
+        int shipH = 8 * 2;
+        int shipY1 = mid1 - shipH / 2;
+        int shipY2 = mid2 - shipH / 2;
+
+        int centerX = screen.getWidth() / 2;
+        int textW1 = fontRegularMetrics.stringWidth(" 1 PLAYER ");
+        int textW2 = fontRegularMetrics.stringWidth(" 2 PLAYER ");
+        int gap = 10;
+        int shipGap = 12;
+
+        int textLeft1 = centerX - textW1 / 2;
+        int rightEdge1 = textLeft1 - gap;
+        int shipX1 = rightEdge1 - shipW;
+        drawEntity(new Ship(0, 0, (selection == 0) ? new Color(0,200,0) : Color.DARK_GRAY), shipX1, shipY1);
+
+        int textLeft2 = centerX - textW2 / 2;
+        int rightEdge2 = textLeft2 - gap;
+        int shipsTotalW = shipW * 2 + shipGap;
+        int shipX2a = rightEdge2 - shipsTotalW;
+        int shipX2b = shipX2a + shipW + shipGap;
+        Color twoPColor = (selection == 1) ? new Color(0,200,0) : Color.DARK_GRAY;
+        drawEntity(new Ship(0, 0, twoPColor), shipX2a, shipY2);
+        drawEntity(new Ship(0, 0, twoPColor), shipX2b, shipY2);
+
+        backBufferGraphics.setColor(Color.GRAY);
+        drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+    }
 }
-
-
-
