@@ -167,17 +167,36 @@ public final class DrawManager {
 	/**
 	 * Draws an entity.
 	 */
-	public void drawEntity(final Entity entity, final int positionX, final int positionY) {
-		boolean[][] image = spriteMap.get(entity.getSpriteType());
-		backBufferGraphics.setColor(entity.getColor());
-		for (int i = 0; i < image.length; i++)
-			for (int j = 0; j < image[i].length; j++)
-				if (image[i][j])
-					backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
+    public void drawEntity(final Entity entity, final int positionX, final int positionY) {
+        SpriteType type = entity.getSpriteType();
+        if (type == SpriteType.FinalBossBullet && entity.getHeight() > 20) {
+            backBufferGraphics.setColor(entity.getColor());
+            backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
+            return;
+        }
 
+        boolean[][] image = spriteMap.get(type);
+        if (image == null) {
+            backBufferGraphics.setColor(entity.getColor());
+            backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
+            return;
+        }
 
-	}
+        backBufferGraphics.setColor(entity.getColor());
+        for (int i = 0; i < image.length; i++)
+            for (int j = 0; j < image[i].length; j++)
+                if (image[i][j])
+                    backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
+    }
+    public void drawLaserWarning(final Screen screen, final int x, final int startY) {
+        int height = screen.getHeight() - startY;
 
+        float pulse = (float) ((Math.sin(System.currentTimeMillis() / 150.0) + 1.0) / 2.0);
+        int alpha = (int) (80 + pulse * 120);
+
+        backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
+        backBufferGraphics.drawRect(x, startY, 4, height);
+    }
 	/**
 	 * Draws current score on screen.
 	 */
