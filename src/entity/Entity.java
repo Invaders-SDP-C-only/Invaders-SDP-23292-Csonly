@@ -23,7 +23,7 @@ public class Entity {
 	/** Color of the entity. */
 	protected Color color;
 	/** Sprite type assigned to the entity. */
-	protected SpriteType spriteType;
+    public SpriteType spriteType;
 
 	/**
 	 * Constructor, establishes the entity's generic properties.
