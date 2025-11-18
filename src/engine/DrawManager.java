@@ -110,8 +110,7 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.SamuraiBroken, new boolean[24][24]);
 			spriteMap.put(SpriteType.SwordWave, new boolean[12][18]);
 			spriteMap.put(SpriteType.DeathblowMarker, new boolean[4][4]);
-			spriteMap.put(SpriteType.SwordSlashEffect, new boolean[16][16]); // testing
-			spriteMap.put(SpriteType.ParrySparkEffect, new boolean[16][16]); // testing
+			spriteMap.put(SpriteType.SwordSlashEffect, new boolean[16][16]);
 
 			fileManager.loadSprite(spriteMap);
 

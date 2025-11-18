@@ -234,8 +234,6 @@ public class SamuraiBoss extends Entity implements BossEntity{
                     this.positionY = Math.max(this.positionY - retreatSpeed, this.originalY);
                 }
                 if (Math.abs(this.positionY - this.originalY) < retreatSpeed) atRetreatY = true;
-
-                if (atRetreatX && atRetreatY) {}
                 break;
             // death of samurai
             case FAIL:
@@ -294,10 +292,6 @@ public class SamuraiBoss extends Entity implements BossEntity{
         // Get actual lives.
         boolean p1Alive = (this.player1 != null && this.screen.getLivesP1() > 0 && !this.player1.isDestroyed());
         boolean p2Alive = (this.player2 != null && this.screen.getLivesP2() > 0 && !this.player2.isDestroyed());
-
-        if (this.player2 == null) {
-            return p1Alive ? this.player1 : null;
-        }
 
         // 2p mode
         if (!p1Alive && !p2Alive) return null;
