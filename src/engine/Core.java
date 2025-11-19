@@ -239,7 +239,7 @@ public final class Core {
         fileHandler.close();
         System.exit(0);
 	}
-
+ 
 	/**
 	 * Constructor, not called.
 	 */

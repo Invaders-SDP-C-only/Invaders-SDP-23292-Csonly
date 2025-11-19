@@ -33,6 +33,15 @@ public class Ship extends Entity {
 	private boolean isInvincible;
     // === [ADD] Which player: 1 = P1, 2 = P2 (default 1 for single-player compatibility) ===
     private int playerId = 1;
+	/** Checks player MeleeMode. */
+	private boolean isMeleeMode = false;
+	/** Checks player parrying cooldown. */
+	private Cooldown parryCooldown;
+	/** Checks player parrying. */
+	private boolean isParrying = false;
+	/** Effect of melee mode. */
+	private Entity swordSlashEffect;
+
     public void setPlayerId(int pid) { this.playerId = pid; }
     public int getPlayerId() { return this.playerId; }
 
@@ -52,7 +61,9 @@ public class Ship extends Entity {
 		this.destructionCooldown = Core.getCooldown(1000);
 		this.shieldCooldown = Core.getCooldown(0);
 		this.isInvincible = false;
-
+		this.parryCooldown = Core.getCooldown(300);
+		this.swordSlashEffect = new Entity(positionX, positionY, 16*2, 16*2, Color.WHITE);
+		this.swordSlashEffect.spriteType = SpriteType.SwordSlashEffect;
 	}
 
 	/**
@@ -101,41 +112,49 @@ public class Ship extends Entity {
 	public final boolean shoot(final Set<Bullet> bullets) {
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
-
-			// Get Spread Shot information from the DropItem class
-			int bulletCount = ShopItem.getMultiShotBulletCount();
-			int spacing = ShopItem.getMultiShotSpacing();
-
-			int centerX = positionX + this.width / 2;
-			int centerY = positionY;
-
-			if (bulletCount == 1) {
-				// Normal shot (when Spread Shot is not purchased)
-				Bullet b = BulletPool.getBullet(centerX, centerY, BULLET_SPEED);
-				SoundManager.stop("sfx/laser.wav");
-                SoundManager.play("sfx/laser.wav");
-                b.setOwnerId(this.playerId);  // === [ADD] Ownership flag: 1 = P1, 2 = P2, null for legacy logic ===
-
-                bullets.add(b);
+			// checking player melee mode
+			if (this.isMeleeMode) {
+				SoundManager.play("sfx/melee.wav");
+				this.isParrying = true;
+				this.parryCooldown.reset();
+				return true;
 			} else {
-				// Fire Spread Shot
-				int startOffset = -(bulletCount / 2) * spacing;
+				// Get Spread Shot information from the DropItem class
+				int bulletCount = ShopItem.getMultiShotBulletCount();
+				int spacing = ShopItem.getMultiShotSpacing();
 
-				for (int i = 0; i < bulletCount; i++) {
-					int offsetX = startOffset + (i * spacing);
-                    Bullet b = BulletPool.getBullet(centerX + offsetX, centerY, BULLET_SPEED);
-                    b.setOwnerId(this.playerId);   // Ownership flag
+				int centerX = positionX + this.width / 2;
+				int centerY = positionY;
 
-                    bullets.add(b);
-
-                    // might consider putting a different sound
+				if (bulletCount == 1) {
+					// Normal shot (when Spread Shot is not purchased)
+					Bullet b = BulletPool.getBullet(centerX, centerY, BULLET_SPEED);
 					SoundManager.stop("sfx/laser.wav");
-                    SoundManager.play("sfx/laser.wav");
-                }
+					SoundManager.play("sfx/laser.wav");
+					b.setOwnerId(this.playerId);  // === [ADD] Ownership flag: 1 = P1, 2 = P2, null for legacy logic ===
+
+					bullets.add(b);
+				} else {
+					// Fire Spread Shot
+					int startOffset = -(bulletCount / 2) * spacing;
+
+					for (int i = 0; i < bulletCount; i++) {
+						int offsetX = startOffset + (i * spacing);
+						Bullet b = BulletPool.getBullet(centerX + offsetX, centerY, BULLET_SPEED);
+						b.setOwnerId(this.playerId);   // Ownership flag
+
+						bullets.add(b);
+
+						// might consider putting a different sound
+						SoundManager.stop("sfx/laser.wav");
+						SoundManager.play("sfx/laser.wav");
+					}
+				}
+				return true;
 			}
-			return true;
 		}
 		return false;
+
 	}
 
 	/**
@@ -151,6 +170,13 @@ public class Ship extends Entity {
             this.spriteType = SpriteType.ShipDestroyed;
         else
             this.spriteType = SpriteType.Ship;
+
+		if (this.isParrying && this.parryCooldown.checkFinished()) {
+			this.isParrying = false;
+		}
+		this.swordSlashEffect.setPositionX(this.positionX + (this.width / 2) - (this.swordSlashEffect.getWidth() / 2));
+		this.swordSlashEffect.setPositionY(this.positionY - this.swordSlashEffect.getHeight() + 10);
+
 	}
 
 	/**
@@ -191,9 +217,26 @@ public class Ship extends Entity {
         return this.isInvincible;
     }
 
+	/**
+	 * Getter for the player melee mode.
+	 *
+	 * @return True if the player is melee mode.
+	 */
+	public final void setMeleeMode(boolean mode) { this.isMeleeMode = mode;
+		if (mode) this.shootingCooldown = Core.getCooldown(500);
+		else this.shootingCooldown = Core.getCooldown(ShopItem.getShootingInterval());
+	}
+
+	/**
+	 * Getter for the player parry status.
+	 *
+	 * @return True if the player is parrying.
+	 */
+	public final boolean isParrying() {return this.isParrying; }
+
     /**
      * Activates the ship's invincibility shield for a given duration.
-     *
+     *s
      * @param duration
      *            Duration of the invincibility in milliseconds.
      */
@@ -203,4 +246,10 @@ public class Ship extends Entity {
         this.shieldCooldown.reset();
         this.setColor(Color.BLUE);
     }
+	/**
+	 * Getter for the player melee mode effect.
+	 */
+	public final Entity getSwordSlashEffect() {
+	return this.swordSlashEffect;
+}
 }
