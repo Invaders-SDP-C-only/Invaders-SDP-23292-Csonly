@@ -21,8 +21,6 @@ import java.util.Set;
 
 import engine.level.Level;
 import engine.level.LevelManager;
-
-
 /**
  * Implements the game screen, where the action happens.
  *
@@ -72,6 +70,7 @@ public class GameScreen extends Screen {
 	private Cooldown enemyShipSpecialCooldown;
 	/** team drawing may implement */
 	private FinalBoss finalBoss;
+    private FinalBoss_3 finalBoss3;
 	/** Time until bonus ship explosion disappears. */
 	private Cooldown enemyShipSpecialExplosionCooldown;
 	/** Time until Boss explosion disappears. */
@@ -229,10 +228,17 @@ public class GameScreen extends Screen {
 		this.gameTimer = new GameTimer();
         this.elapsedTime = 0;
 		this.finalBoss = null;
+        this.finalBoss3 = null;
 		this.omegaBoss = null;
 		this.currentPhase = StagePhase.wave;
-	}
 
+        // 🔥 테스트용: 1단계에서는 웨이브 생략하고 바로 보스 웨이브로 진입
+        if (this.level == 1) {
+            this.currentPhase = StagePhase.boss_wave;  // 상태를 보스 웨이브로 강제 전환
+            bossReveal();                              // 바로 보스 소환
+            this.enemyShipFormation.clear();           // 기존 적 포메이션 정리
+        }
+	}
 	/**
 	 * Starts the action.
 	 *
@@ -313,45 +319,51 @@ public class GameScreen extends Screen {
 					}
 				}
 			}
-			switch (this.currentPhase) {
-				case wave:
-					if (!DropItem.isTimeFreezeActive()) {
-						this.enemyShipFormation.update();
-						this.enemyShipFormation.shoot(this.bullets);
-					}
-					if (this.enemyShipFormation.isEmpty()) {
-						this.currentPhase = StagePhase.boss_wave;
-					}
-					break;
-				case boss_wave:
-					if (this.finalBoss == null && this.omegaBoss == null){
-						bossReveal();
-						this.enemyShipFormation.clear();
-					}
-					if(this.finalBoss != null){
-						finalbossManage();
-					}
-					else if (this.omegaBoss != null){
-						this.omegaBoss.update();
-						if (this.omegaBoss.isDestroyed()) {
-							if ("omegaAndFinal".equals(this.currentlevel.getBossId())) {
-								this.omegaBoss = null;
+            switch (this.currentPhase) {
+                case wave:
+                    if (!DropItem.isTimeFreezeActive()) {
+                        this.enemyShipFormation.update();
+                        this.enemyShipFormation.shoot(this.bullets);
+                    }
+                    if (this.enemyShipFormation.isEmpty()) {
+                        // 모든 적을 다 잡으면 -> 보스 웨이브로 전환
+                        this.currentPhase = StagePhase.boss_wave;
+                    }
+                    break;
+
+                case boss_wave:
+                    if (this.finalBoss == null && this.finalBoss3 == null && this.omegaBoss == null) {
+                        bossReveal();
+                        this.enemyShipFormation.clear();
+                    }
+
+                    if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
+                        finalBoss3Manage();
+                    }
+                    else if (this.finalBoss != null && !this.finalBoss.isDestroyed()) {
+                        finalbossManage();
+                    }
+                    else if (this.omegaBoss != null && !this.omegaBoss.isDestroyed()) {
+                        this.omegaBoss.update();
+                        if (this.omegaBoss.isDestroyed()) {
+                            if ("omegaAndFinal".equals(this.currentlevel.getBossId())) {
+                                this.omegaBoss = null;
                                 this.finalBoss = new FinalBoss(this.width / 2 - 50, 50, this.width, this.height);
                                 this.logger.info("Final Boss has spawned!");
-							} else {
-								this.levelFinished = true;
-								this.screenFinishedCooldown.reset();
-							}
-						}
-					}
-					else{
-						if(!this.levelFinished){
-							this.levelFinished = true;
-							this.screenFinishedCooldown.reset();
-						}
-					}
-					break;
-			}
+                            } else {
+                                this.levelFinished = true;
+                                this.screenFinishedCooldown.reset();
+                            }
+                        }
+                    }
+                    else {
+                        if (!this.levelFinished) {
+                            this.levelFinished = true;
+                            this.screenFinishedCooldown.reset();
+                        }
+                    }
+                    break;
+            }
 			this.ship.update();
 			if (this.shipP2 != null) {
 				this.shipP2.update();
@@ -422,14 +434,21 @@ public class GameScreen extends Screen {
 		// special enemy draw
 		enemyShipSpecialFormation.draw();
 
-		/** draw final boss at the field */
-		/** draw final boss bullets */
-		if(this.finalBoss != null && !this.finalBoss.isDestroyed()){
-			for (BossBullet bossBullet : bossBullets) {
-				drawManager.drawEntity(bossBullet, bossBullet.getPositionX(), bossBullet.getPositionY());
-			}
-			drawManager.drawEntity(finalBoss, finalBoss.getPositionX(), finalBoss.getPositionY());
-		}
+        // draw boss bullets (shared for any boss)
+        if (bossBullets != null) {
+            for (BossBullet bossBullet : bossBullets) {
+                drawManager.drawEntity(bossBullet, bossBullet.getPositionX(), bossBullet.getPositionY());
+            }
+        }
+
+        // draw bosses
+        if (this.finalBoss != null && !this.finalBoss.isDestroyed()) {
+            drawManager.drawEntity(finalBoss, finalBoss.getPositionX(), finalBoss.getPositionY());
+        }
+
+        if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
+            drawManager.drawEntity(finalBoss3, finalBoss3.getPositionX(), finalBoss3.getPositionY());
+        }
 
 		enemyShipFormation.draw();
 
@@ -625,18 +644,31 @@ public class GameScreen extends Screen {
 					recyclable.add(bullet);
 				}
 
-				/** when final boss collide with bullet */
-				if(this.finalBoss != null && !this.finalBoss.isDestroyed() && checkCollision(bullet,this.finalBoss)){
-					this.finalBoss.takeDamage(1);
-					if(this.finalBoss.getHealPoint() <= 0){
+                /** when final boss collide with bullet */
+                if(this.finalBoss != null && !this.finalBoss.isDestroyed() && checkCollision(bullet,this.finalBoss)){
+                    this.finalBoss.takeDamage(1);
+                    if(this.finalBoss.getHealPoint() <= 0){
                         int pts = this.finalBoss.getPointValue();
                         addPointsFor(bullet, pts);
                         this.coin += (pts / 10);
-						this.finalBoss.destroy();
+                        this.finalBoss.destroy();
                         AchievementManager.getInstance().unlockAchievement("Boss Slayer");
-					}
-					recyclable.add(bullet);
-				}
+                    }
+                    recyclable.add(bullet);
+                }
+                // when FinalBoss_3 collides with bullet
+                if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()
+                        && checkCollision(bullet, this.finalBoss3)) {
+                    this.finalBoss3.takeDamage(1);
+                    if (this.finalBoss3.getHealPoint() <= 0) {
+                        int pts = this.finalBoss3.getPointValue();
+                        addPointsFor(bullet, pts);
+                        this.coin += (pts / 10);
+                        this.finalBoss3.destroy();
+                        AchievementManager.getInstance().unlockAchievement("Boss Slayer");
+                    }
+                    recyclable.add(bullet);
+                }
             }
         this.bullets.removeAll(recyclable);
         BulletPool.recycle(recyclable);
@@ -920,6 +952,11 @@ public class GameScreen extends Screen {
 	private void bossReveal() {
 		String bossName = this.currentlevel.getBossId();
 
+        // 🔥 [임시 테스트용] 1스테이지에서도 보스를 강제로 소환
+        if (this.level == 1) {      // ← 1단계일 때
+            bossName = "finalBoss3"; // ← 그냥 FinalBoss_3 쓰자
+        }
+
 		if (bossName == null || bossName.isEmpty()) {
 			this.logger.info("No boss for this level. Proceeding to finish.");
 			return;
@@ -927,8 +964,9 @@ public class GameScreen extends Screen {
 
 		this.logger.info("Spawning boss: " + bossName);
 		switch (bossName) {
-			case "finalBoss":
-				this.finalBoss = new FinalBoss(this.width / 2 - 50, 50, this.width, this.height);
+            case "finalBoss":
+			case "finalBoss3":
+				this.finalBoss3 = new FinalBoss_3(this.width / 2 - 50, 50, this.width, this.height);
 				this.logger.info("Final Boss has spawned!");
 				break;
 			case "omegaBoss":
@@ -942,8 +980,6 @@ public class GameScreen extends Screen {
 				break;
 		}
 	}
-
-
 	public void finalbossManage(){
 		if (this.finalBoss != null && !this.finalBoss.isDestroyed()) {
 			this.finalBoss.update();
@@ -966,6 +1002,11 @@ public class GameScreen extends Screen {
 			Set<BossBullet> bulletsToRemove = new HashSet<>();
 
 			for (BossBullet b : bossBullets) {
+                if (!finalBoss3.isLaserActive()
+                        && b == finalBoss3.getCurrentLaserBullet()) {
+                    bulletsToRemove.add(b);
+                    continue;
+                }
 				b.update();
 				/** If the bullet goes off the screen */
 				if (b.isOffScreen(width, height)) {
@@ -999,4 +1040,67 @@ public class GameScreen extends Screen {
 			this.screenFinishedCooldown.reset();
 		}
 	}
+    public void finalBoss3Manage() {
+        if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
+
+            // 1) 보스 업데이트 + 탄 생성
+            this.finalBoss3.update();
+            bossBullets.addAll(this.finalBoss3.shoot());
+
+            Set<BossBullet> bulletsToRemove = new HashSet<>();
+
+            for (BossBullet b : bossBullets) {
+
+                // 2) 레이저 수명 끝났으면, 그 레이저 탄은 바로 삭제
+                if (b == finalBoss3.getCurrentLaserBullet()
+                        && !finalBoss3.isLaserActive()) {
+                    bulletsToRemove.add(b);
+                    continue;   // 아래 로직은 탈락
+                }
+
+                // 3) 기존 탄 업데이트 & 삭제 로직
+                b.update();
+
+                // 화면 밖으로 나가면 삭제
+                if (b.isOffScreen(width, height)) {
+                    bulletsToRemove.add(b);
+                    continue;
+                }
+
+                // P1 충돌
+                if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
+                        && this.checkCollision(b, this.ship)) {
+
+                    if (!this.ship.isInvincible()) {
+                        this.ship.destroy();
+                        this.livesP1--;
+                        showHealthPopup("-1 Health");
+                        this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+                    }
+                    bulletsToRemove.add(b);
+                    continue;
+                }
+
+                // P2 충돌
+                if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
+                        && this.checkCollision(b, this.shipP2)) {
+
+                    if (!this.shipP2.isInvincible()) {
+                        this.shipP2.destroy();
+                        this.livesP2--;
+                        showHealthPopup("-1 Health");
+                        this.logger.info("Hit on player ship (P2), " + this.livesP2 + " lives remaining.");
+                    }
+                    bulletsToRemove.add(b);
+                }
+            }
+
+            bossBullets.removeAll(bulletsToRemove);
+        }
+
+        if (this.finalBoss3 != null && this.finalBoss3.isDestroyed()) {
+            this.levelFinished = true;
+            this.screenFinishedCooldown.reset();
+        }
+    }
 }

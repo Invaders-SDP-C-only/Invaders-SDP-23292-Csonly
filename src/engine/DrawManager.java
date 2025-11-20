@@ -197,6 +197,27 @@ public final class DrawManager {
         backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
         backBufferGraphics.drawRect(x, startY, 4, height);
     }
+    public void drawLaserBeamFading(final Screen screen,
+                                    final int x,
+                                    final int startY,
+                                    final float alphaFactor,
+                                    final float progress) {
+
+        if (alphaFactor <= 0f) return;
+
+        int maxHeight = screen.getHeight() - startY;
+
+        // progress(0.0~1.0)에 따라 높이가 커지게
+        int height = (int) (maxHeight * progress);
+        if (height < 1) height = 1;
+
+        int alpha = (int) (alphaFactor * 220); // 최대 220 정도
+        if (alpha < 0) alpha = 0;
+        if (alpha > 255) alpha = 255;
+
+        backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
+        backBufferGraphics.fillRect(x, startY, 4, height);
+    }
 	/**
 	 * Draws current score on screen.
 	 */

@@ -30,6 +30,12 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     private int laserWarningX;
     private int laserWarningStartY;
     private boolean laserWarningActive = false;
+    private boolean laserActive = false;
+    private long laserStartTime = 0L;
+    private static final long LASER_DURATION_MS = 450;
+    private BossBullet currentLaserBullet;
+
+
     public FinalBoss_3(int x, int y, int screenWidth, int screenHeight) {
         super(x, y, 90, 60, Color.ORANGE);
         this.screenWidth = screenWidth;
@@ -45,12 +51,22 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         this.threeWayCooldown = Core.getCooldown(1500);
         this.laserCooldown = Core.getCooldown(4000);
         this.laserWarningCooldown = Core.getCooldown(800);
+        this.laserActive = false;
+        this.currentLaserBullet = null;
 
     }
 
     @Override
     public void update() {
-        movePattern();
+        if (!laserWarningActive && !laserActive) {
+            movePattern();
+        }
+        if (laserActive) {
+            long elapsed = System.currentTimeMillis() - laserStartTime;
+            if (elapsed >= LASER_DURATION_MS) {
+                laserActive = false;
+            }
+        }
     }
 
     private void movePattern() {
@@ -100,34 +116,83 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
         return b;
     }
-
     private Set<BossBullet> shootLaser() {
         Set<BossBullet> bullets = new HashSet<>();
+
+        // 1) 이미 예고선이 켜져 있는 상태라면 → 예고 시간이 끝났는지 체크
         if (laserWarningActive) {
             if (!laserWarningCooldown.checkFinished()) {
+                // 아직 예고 시간 남음 → 이번 프레임에는 발사 안 함
                 return bullets;
             }
+
+            // 예고 종료 → 실제 레이저 발사
             laserWarningActive = false;
             laserWarningCooldown.reset();
 
-            int laserHeight = screenHeight - laserWarningStartY;
-            bullets.add(new BossBullet(
-                    laserWarningX,
-                    laserWarningStartY,
-                    0, 0,
-                    4, laserHeight,
+            // 레이저 지속 시간 (게임스크린에서 isLaserActive()로 체크할 그거)
+            this.laserActive = true;
+            this.laserStartTime = System.currentTimeMillis();
+
+            // === 여기서부터 "한 점에서 3갈래로 나가는" 패턴 ===
+
+            int originX = laserWarningX;
+            int originY = laserWarningStartY;
+
+            int laserWidth = 9;      // 레이저 두께
+            int laserLength = 500;    // 레이저 세로 길이 (짧은 막대)
+            int baseSpeedY = 7;      // 공통 내려가는 속도
+            int spreadSpeedX = 3;    // 좌우로 퍼지는 속도
+
+            // 중앙 레이저 (직선)
+            BossBullet center = new BossBullet(
+                    originX,
+                    originY,
+                    0, baseSpeedY,          // straight down
+                    laserWidth, laserLength,
                     Color.CYAN
-            ));
+            );
+            bullets.add(center);
+            this.currentLaserBullet = center;   // 수명 관리용(중앙 탄만 isLaserActive()로 제거)
+
+            // 체력이 절반 이하일 때 → 좌우 레이저 추가 (삼각 패턴)
+            if (healPoint <= maxHP / 2) {
+                // 왼쪽 대각선 레이저
+                BossBullet left = new BossBullet(
+                        originX,
+                        originY,
+                        -spreadSpeedX, baseSpeedY,   // 왼쪽 아래로
+                        laserWidth, laserLength,
+                        Color.CYAN
+                );
+
+                // 오른쪽 대각선 레이저
+                BossBullet right = new BossBullet(
+                        originX,
+                        originY,
+                        spreadSpeedX, baseSpeedY,    // 오른쪽 아래로
+                        laserWidth, laserLength,
+                        Color.CYAN
+                );
+
+                bullets.add(left);
+                bullets.add(right);
+            }
+
             return bullets;
         }
+
+        // 2) 아직 예고 상태가 아니면 → 쿨타임 체크
         if (!laserCooldown.checkFinished())
             return bullets;
 
+        // 쿨타임 종료 → 예고선 ON
         laserCooldown.reset();
 
         laserWarningActive = true;
         laserWarningCooldown.reset();
 
+        // 예고선 시작 위치 = 보스 가운데 아랫부분
         laserWarningX = positionX + width / 2;
         laserWarningStartY = positionY + height;
 
@@ -158,12 +223,45 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     public boolean isLaserWarningActive() {
         return laserWarningActive;
     }
-
+    public boolean isLaserActive() {
+        return laserActive;
+    }
     public int getLaserWarningX() {
         return laserWarningX;
     }
-
     public int getLaserWarningStartY() {
         return laserWarningStartY;
+    }
+    public float getLaserAlpha() {
+        if (!laserActive) return 0f;
+
+        long elapsed = System.currentTimeMillis() - laserStartTime;
+        float t = (float) elapsed / (float) LASER_DURATION_MS;
+
+        if (t >= 1f) {
+            laserActive = false;
+            return 0f;
+        }
+        if (t < 0f) t = 0f;
+        if (t > 1f) t = 1f;
+
+        if (t < 0.3f) {
+            return 1.0f;
+        } else {
+            float fadeT = (t - 0.3f) / 0.7f;
+            return 1.0f - fadeT;
+        }
+    }
+
+    public BossBullet getCurrentLaserBullet() {
+        return currentLaserBullet;
+    }
+    public float getLaserProgress() {
+        if(!laserActive) return 0f;
+        long elapsed = System.currentTimeMillis() - laserStartTime;
+        float t = (float) elapsed / (float) LASER_DURATION_MS;
+        if (t >= 0f) t = 0f;
+        if(t > 1f) t = 1f;
+        return t;
     }
 }
