@@ -1,10 +1,6 @@
 package engine;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontFormatException;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -187,36 +183,6 @@ public final class DrawManager {
             for (int j = 0; j < image[i].length; j++)
                 if (image[i][j])
                     backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
-    }
-    public void drawLaserWarning(final Screen screen, final int x, final int startY) {
-        int height = screen.getHeight() - startY;
-
-        float pulse = (float) ((Math.sin(System.currentTimeMillis() / 150.0) + 1.0) / 2.0);
-        int alpha = (int) (80 + pulse * 120);
-
-        backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
-        backBufferGraphics.drawRect(x, startY, 4, height);
-    }
-    public void drawLaserBeamFading(final Screen screen,
-                                    final int x,
-                                    final int startY,
-                                    final float alphaFactor,
-                                    final float progress) {
-
-        if (alphaFactor <= 0f) return;
-
-        int maxHeight = screen.getHeight() - startY;
-
-        // progress(0.0~1.0)에 따라 높이가 커지게
-        int height = (int) (maxHeight * progress);
-        if (height < 1) height = 1;
-
-        int alpha = (int) (alphaFactor * 220); // 최대 220 정도
-        if (alpha < 0) alpha = 0;
-        if (alpha > 255) alpha = 255;
-
-        backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
-        backBufferGraphics.fillRect(x, startY, 4, height);
     }
 	/**
 	 * Draws current score on screen.
@@ -804,5 +770,69 @@ public final class DrawManager {
 
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+    }
+    public void drawLaserBeam(LaserBeam beam) {
+        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+
+        float alpha = beam.getAlphaFactor();
+        if (alpha <= 0f) return;
+
+        Color laserColor = new Color(0f, 1f, 1f,alpha);
+        g2.setColor(laserColor);
+
+        float x1 = beam.getOriginX();
+        float y1 = beam.getOriginY();
+
+        float angle = beam.getAngle();
+        float length = beam.getLength();
+        float thickness = beam.getThickness();
+
+        // 레이저 끝점
+        float x2 = (float)(x1 + Math.cos(angle) * length);
+        float y2 = (float)(y1 + Math.sin(angle) * length);
+
+        // 방향 수직 벡터
+        float t = beam.getThickness() / 2f;
+        float dx = (float) Math.sin(angle) * t;
+        float dy = (float) -Math.cos(angle) * t;
+
+        // 4개의 꼭짓점(직사각형)
+        int[] px = {
+                (int) (x1 - dx), (int) (x1 + dx),
+                (int) (x2 + dx), (int) (x2 -dx)
+        };
+        int[] py = {
+                (int) (y1 - dy), (int) (y1 + dy),
+                (int) (y2 + dy), (int) (y2 -dy)
+        };
+
+        g2.fillPolygon(px, py, 4);
+    }
+    public void drawLaserWarningLine(float originX, float originY, float angle) {
+        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+
+        // 점선 스타일
+        float[] dashPattern = {6f, 6f};
+        g2.setStroke(new BasicStroke(
+                2f,
+                BasicStroke.CAP_ROUND,
+                BasicStroke.JOIN_ROUND,
+                10f,
+                dashPattern,
+                0f
+        ));
+        // 색상 (하늘색)
+        g2.setColor(new Color(0, 255, 255, 180));
+
+        // 끝점 계산
+        float length = 2000f;
+        float rad = (float) Math.toRadians(angle);
+
+        float x2 = (float) (originX + Math.cos(rad) * length);
+        float y2 = (float) (originY + Math.sin(rad) * length);
+
+        g2.drawLine((int)originX, (int)originY, (int)x2, (int)y2);
+        // Stroke 초기화
+        g2.setStroke(new BasicStroke(1f));
     }
 }

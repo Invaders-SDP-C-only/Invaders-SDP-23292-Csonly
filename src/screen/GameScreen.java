@@ -8,12 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import engine.Cooldown;
-import engine.Core;
-import engine.GameState;
-import engine.GameTimer;
-import engine.AchievementManager;
-import engine.ItemHUDManager;
+import engine.*;
 import entity.*;
 import java.awt.event.KeyEvent;
 import java.util.HashSet;
@@ -136,9 +131,8 @@ public class GameScreen extends Screen {
   /** Health change popup. */
   private String healthPopupText;
   private Cooldown healthPopupCooldown;
-
+  private LaserBeamManager laserBeamManager =  new LaserBeamManager();
 	    private GameState gameState;
-
 	    /**
 	     * Constructor, establishes the properties of the screen.
 	     *
@@ -231,13 +225,6 @@ public class GameScreen extends Screen {
         this.finalBoss3 = null;
 		this.omegaBoss = null;
 		this.currentPhase = StagePhase.wave;
-
-        // 🔥 테스트용: 1단계에서는 웨이브 생략하고 바로 보스 웨이브로 진입
-        if (this.level == 1) {
-            this.currentPhase = StagePhase.boss_wave;  // 상태를 보스 웨이브로 강제 전환
-            bossReveal();                              // 바로 보스 소환
-            this.enemyShipFormation.clear();           // 기존 적 포메이션 정리
-        }
 	}
 	/**
 	 * Starts the action.
@@ -381,6 +368,37 @@ public class GameScreen extends Screen {
         manageShipEnemyCollisions();
         manageItemCollisions();
 		cleanBullets();
+        // Collision LaserBeam
+        if (!this.levelFinished) {
+            //P1 Collision
+            if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
+                    && laserBeamManager.checkCollisionWithShip(this.ship)) {
+
+                if (!this.ship.isInvincible()) {
+                    this.ship.destroy();
+                    this.livesP1--;
+                    showHealthPopup("-1 Health");
+                    this.logger.info("Player hit by LaserBeam!");
+
+            // P2 Collision
+                    if(this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
+                        && laserBeamManager.checkCollisionWithShip(this.shipP2)) {
+
+                       if (!this.shipP2.isInvincible()) {
+                           this.shipP2.destroy();
+                           this.livesP2--;
+                           showHealthPopup("1 Health");
+                           this.logger.info("Player2 hit by LaserBeam!");
+                       }
+                    }
+                }
+
+                laserBeamManager.update();
+                draw();
+            }
+        }
+
+        laserBeamManager.update();
 		draw();
 
 		if (((this.livesP1 == 0) && (this.shipP2 == null || this.livesP2 == 0)) && !this.levelFinished) {
@@ -448,6 +466,18 @@ public class GameScreen extends Screen {
 
         if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
             drawManager.drawEntity(finalBoss3, finalBoss3.getPositionX(), finalBoss3.getPositionY());
+        }
+        if (finalBoss3 != null && finalBoss3.isLaserWarningActive()) {
+            for (float angle : finalBoss3.getPendingWarningAngles()) {
+                drawManager.drawLaserWarningLine(
+                        finalBoss3.getWarningOriginX(),
+                        finalBoss3.getWarningOriginY(),
+                        angle
+                );
+            }
+        }
+        for (LaserBeam beam : laserBeamManager.getBeams()) {
+            drawManager.drawLaserBeam(beam);
         }
 
 		enemyShipFormation.draw();
@@ -874,7 +904,7 @@ public class GameScreen extends Screen {
 
 	/**
 	 * Checks if two entities are colliding.
-	 * 
+	 *
 	 * @param a
 	 *            First entity, the bullet.
 	 * @param b
@@ -924,7 +954,7 @@ public class GameScreen extends Screen {
 
     /**
 	 * Returns a GameState object representing the status of the game.
-	 * 
+	 *
 	 * @return Current game state.
 	 */
 	    public final GameState getGameState() {
@@ -951,12 +981,6 @@ public class GameScreen extends Screen {
 
 	private void bossReveal() {
 		String bossName = this.currentlevel.getBossId();
-
-        // 🔥 [임시 테스트용] 1스테이지에서도 보스를 강제로 소환
-        if (this.level == 1) {      // ← 1단계일 때
-            bossName = "finalBoss3"; // ← 그냥 FinalBoss_3 쓰자
-        }
-
 		if (bossName == null || bossName.isEmpty()) {
 			this.logger.info("No boss for this level. Proceeding to finish.");
 			return;
@@ -966,7 +990,7 @@ public class GameScreen extends Screen {
 		switch (bossName) {
             case "finalBoss":
 			case "finalBoss3":
-				this.finalBoss3 = new FinalBoss_3(this.width / 2 - 50, 50, this.width, this.height);
+				this.finalBoss3 = new FinalBoss_3(this.width / 2 - 50, 50, this.width, this.height, this.laserBeamManager);
 				this.logger.info("Final Boss has spawned!");
 				break;
 			case "omegaBoss":
@@ -1002,11 +1026,6 @@ public class GameScreen extends Screen {
 			Set<BossBullet> bulletsToRemove = new HashSet<>();
 
 			for (BossBullet b : bossBullets) {
-                if (!finalBoss3.isLaserActive()
-                        && b == finalBoss3.getCurrentLaserBullet()) {
-                    bulletsToRemove.add(b);
-                    continue;
-                }
 				b.update();
 				/** If the bullet goes off the screen */
 				if (b.isOffScreen(width, height)) {
@@ -1042,26 +1061,14 @@ public class GameScreen extends Screen {
 	}
     public void finalBoss3Manage() {
         if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
-
-            // 1) 보스 업데이트 + 탄 생성
             this.finalBoss3.update();
             bossBullets.addAll(this.finalBoss3.shoot());
 
             Set<BossBullet> bulletsToRemove = new HashSet<>();
 
             for (BossBullet b : bossBullets) {
-
-                // 2) 레이저 수명 끝났으면, 그 레이저 탄은 바로 삭제
-                if (b == finalBoss3.getCurrentLaserBullet()
-                        && !finalBoss3.isLaserActive()) {
-                    bulletsToRemove.add(b);
-                    continue;   // 아래 로직은 탈락
-                }
-
-                // 3) 기존 탄 업데이트 & 삭제 로직
                 b.update();
 
-                // 화면 밖으로 나가면 삭제
                 if (b.isOffScreen(width, height)) {
                     bulletsToRemove.add(b);
                     continue;
