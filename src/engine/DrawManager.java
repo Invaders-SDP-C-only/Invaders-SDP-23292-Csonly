@@ -172,26 +172,41 @@ public final class DrawManager {
 	/**
 	 * Draws an entity.
 	 */
-	public void drawEntity(final Entity entity, final int positionX, final int positionY) {
-        SpriteType type = entity.getSpriteType();
-        if (type == SpriteType.FinalBossBullet && entity.getHeight() > 20) {
-            backBufferGraphics.setColor(entity.getColor());
-            backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
-            return;
-        }
-
-		boolean[][] image = spriteMap.get(entity.getSpriteType());
-		if (image == null) {
-			logger.warning("SpriteType " + entity.getSpriteType() + " is null in spriteMap.");
-			backBufferGraphics.setColor(Color.MAGENTA);
+  public void drawEntity(final Entity entity, final int positionX, final int positionY) {
+		SpriteType type = entity.getSpriteType();
+		if (type == SpriteType.FinalBossBullet && entity.getHeight() > 20) {
+			backBufferGraphics.setColor(entity.getColor());
 			backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
 			return;
 		}
+
+		boolean[][] image = spriteMap.get(type);
+		if (image == null) {
+			logger.warning("SpriteType " + type + " is null in spriteMap.");
+			backBufferGraphics.setColor(entity.getColor());
+			backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
+			return;
+		}
+
 		backBufferGraphics.setColor(entity.getColor());
 		for (int i = 0; i < image.length; i++)
 			for (int j = 0; j < image[i].length; j++)
 				if (image[i][j])
 					backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
+	}
+
+	/**
+	 * Draws a warning line for laser attacks.
+	 * (From feature/new-boss-3)
+	 */
+	public void drawLaserWarning(final Screen screen, final int x, final int startY) {
+		int height = screen.getHeight() - startY;
+
+		float pulse = (float) ((Math.sin(System.currentTimeMillis() / 150.0) + 1.0) / 2.0);
+		int alpha = (int) (80 + pulse * 120);
+
+		backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
+		backBufferGraphics.drawRect(x, startY, 4, height);
 	}
 
 	/**
@@ -210,8 +225,9 @@ public final class DrawManager {
 		backBufferGraphics.setColor(Color.RED);
 		backBufferGraphics.fillRect(x, y, (int) (barWidth * healthPercent), barHeight);
 	}
+
 	/**
-	 * Draw Death maker.
+	 * Draw Death marker.
 	 */
 	public void drawDeathblowMarker(final Screen screen, final int x, final int y) {
 		int markerWidth = 4 * 2; // 4x2
@@ -854,7 +870,7 @@ public final class DrawManager {
     public void drawLaserWarningLine(float originX, float originY, float angle) {
         Graphics2D g2 = (Graphics2D) backBufferGraphics;
 
-        // 점선 스타일
+
         float[] dashPattern = {6f, 6f};
         g2.setStroke(new BasicStroke(
                 2f,
@@ -864,10 +880,8 @@ public final class DrawManager {
                 dashPattern,
                 0f
         ));
-        // 색상 (하늘색)
-        g2.setColor(new Color(0, 255, 255, 180));
 
-        // 끝점 계산
+        g2.setColor(new Color(0, 255, 255, 180));
         float length = 2000f;
         float rad = (float) Math.toRadians(angle);
 

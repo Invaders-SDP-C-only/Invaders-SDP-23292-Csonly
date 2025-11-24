@@ -66,7 +66,6 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     @Override
     public void update() {
 
-        // ───────────────────── Warning Phase ─────────────────────
         if (laserWarningActive) {
 
             if (System.currentTimeMillis() >= laserWarningEndTime) {

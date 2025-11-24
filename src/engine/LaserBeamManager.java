@@ -55,27 +55,22 @@ public class LaserBeamManager {
         float length = beam.getLength();
         float halfThickness = beam.getThickness() / 2f;
 
-        // 레이저 방향 벡터
         float dirX = (float) Math.cos(angle);
         float dirY = (float) Math.sin(angle);
 
-        // 레이저 수직 방향 벡터
         float perpX = (float) Math.sin(angle);
         float perpY = (float) -Math.cos(angle);
 
-        // 점 기준 이동
+
         float dx = x - x1;
         float dy = y - y1;
 
-        // 각 방향으로 투영
         float projAlong = dx * dirX + dy * dirY;
         float projPerp  = dx * perpX + dy * perpY;
 
-        // 길이 범위 검사
         if (projAlong < 0 || projAlong > length)
             return false;
 
-        // 두께 범위 검사
         return Math.abs(projPerp) <= halfThickness;
     }
 }
