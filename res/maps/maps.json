@@ -145,6 +145,21 @@
       "bossId": "omegaAndFinal",
       "completionBonus": { "currency": 90 },
       "achievementTrigger": "Conqueror"
+    },
+    {
+      "level": 8,
+      "levelName": "8. The Duel",
+      "enemyFormation": {
+        "formationWidth": 0,
+        "formationHeight": 0,
+        "baseSpeed": 0,
+        "shootingFrecuency": 0
+      },
+      "enemyTypes": [],
+      "itemDrops": [],
+      "bossId": "SamuraiBoss",
+      "completionBonus": { "currency": 500 },
+      "achievementTrigger": "Conqueror"
     }
   ]
 }
