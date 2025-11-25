@@ -1,6 +1,15 @@
 plugins {
     id 'java'
     id 'application'
+    id "org.sonarqube" version "7.1.0.6387"
+}
+
+sonar {
+    properties {
+        // SonarQube가 알려준 키값 그대로 입력
+        property "sonar.projectKey", "Invaders-SDP-C-only_Invaders-SDP-23292-Csonly"
+        property "sonar.organization", "invaders-sdp-c-only"
+    }
 }
 
 repositories {
