@@ -1,10 +1,6 @@
 package engine;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontFormatException;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -13,10 +9,14 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import entity.Entity;
+import entity.FinalBoss;
 import entity.Ship;
+import engine.Achievement;
 import screen.CreditScreen;
 import screen.GameScreen;
 import screen.Screen;
+import engine.Score;
+import screen.TitleScreen;
 import screen.TitleScreen.Star;
 import screen.TitleScreen.ShootingStar;
 
@@ -113,7 +113,6 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.SwordSlashEffect, new boolean[16][16]);
 
 			fileManager.loadSprite(spriteMap);
-
 			logger.info("Finished loading the sprites.");
 
 			fontRegular = fileManager.loadFont(14f);
@@ -173,19 +172,41 @@ public final class DrawManager {
 	/**
 	 * Draws an entity.
 	 */
-	public void drawEntity(final Entity entity, final int positionX, final int positionY) {
-		boolean[][] image = spriteMap.get(entity.getSpriteType());
-		if (image == null) {
-			logger.warning("SpriteType " + entity.getSpriteType() + " is null in spriteMap.");
-			backBufferGraphics.setColor(Color.MAGENTA);
+  public void drawEntity(final Entity entity, final int positionX, final int positionY) {
+		SpriteType type = entity.getSpriteType();
+		if (type == SpriteType.FinalBossBullet && entity.getHeight() > 20) {
+			backBufferGraphics.setColor(entity.getColor());
 			backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
 			return;
 		}
+
+		boolean[][] image = spriteMap.get(type);
+		if (image == null) {
+			logger.warning("SpriteType " + type + " is null in spriteMap.");
+			backBufferGraphics.setColor(entity.getColor());
+			backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
+			return;
+		}
+
 		backBufferGraphics.setColor(entity.getColor());
 		for (int i = 0; i < image.length; i++)
 			for (int j = 0; j < image[i].length; j++)
 				if (image[i][j])
 					backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
+	}
+
+	/**
+	 * Draws a warning line for laser attacks.
+	 * (From feature/new-boss-3)
+	 */
+	public void drawLaserWarning(final Screen screen, final int x, final int startY) {
+		int height = screen.getHeight() - startY;
+
+		float pulse = (float) ((Math.sin(System.currentTimeMillis() / 150.0) + 1.0) / 2.0);
+		int alpha = (int) (80 + pulse * 120);
+
+		backBufferGraphics.setColor(new Color(0, 255, 255, alpha));
+		backBufferGraphics.drawRect(x, startY, 4, height);
 	}
 
 	/**
@@ -206,7 +227,7 @@ public final class DrawManager {
 	}
 
 	/**
-	 * Draw Death maker.
+	 * Draw Death marker.
 	 */
 	public void drawDeathblowMarker(final Screen screen, final int x, final int y) {
 		int markerWidth = 4 * 2; // 4x2
@@ -806,7 +827,69 @@ public final class DrawManager {
 		drawEntity(new Ship(0, 0, twoPColor), shipX2a, shipY2);
 		drawEntity(new Ship(0, 0, twoPColor), shipX2b, shipY2);
 
-		backBufferGraphics.setColor(Color.GRAY);
-		drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
-	}
+        backBufferGraphics.setColor(Color.GRAY);
+        drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+    }
+    public void drawLaserBeam(LaserBeam beam) {
+        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+
+        float alpha = beam.getAlphaFactor();
+        if (alpha <= 0f) return;
+
+        Color laserColor = new Color(0f, 1f, 1f,alpha);
+        g2.setColor(laserColor);
+
+        float x1 = beam.getOriginX();
+        float y1 = beam.getOriginY();
+
+        float angle = beam.getAngle();
+        float length = beam.getLength();
+        float thickness = beam.getThickness();
+
+        // 레이저 끝점
+        float x2 = (float)(x1 + Math.cos(angle) * length);
+        float y2 = (float)(y1 + Math.sin(angle) * length);
+
+        // 방향 수직 벡터
+        float t = beam.getThickness() / 2f;
+        float dx = (float) Math.sin(angle) * t;
+        float dy = (float) -Math.cos(angle) * t;
+
+        // 4개의 꼭짓점(직사각형)
+        int[] px = {
+                (int) (x1 - dx), (int) (x1 + dx),
+                (int) (x2 + dx), (int) (x2 -dx)
+        };
+        int[] py = {
+                (int) (y1 - dy), (int) (y1 + dy),
+                (int) (y2 + dy), (int) (y2 -dy)
+        };
+
+        g2.fillPolygon(px, py, 4);
+    }
+    public void drawLaserWarningLine(float originX, float originY, float angle) {
+        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+
+
+        float[] dashPattern = {6f, 6f};
+        g2.setStroke(new BasicStroke(
+                2f,
+                BasicStroke.CAP_ROUND,
+                BasicStroke.JOIN_ROUND,
+                10f,
+                dashPattern,
+                0f
+        ));
+
+        g2.setColor(new Color(0, 255, 255, 180));
+        float length = 2000f;
+        float rad = (float) Math.toRadians(angle);
+
+        float x2 = (float) (originX + Math.cos(rad) * length);
+        float y2 = (float) (originY + Math.sin(rad) * length);
+
+        g2.drawLine((int)originX, (int)originY, (int)x2, (int)y2);
+        // Stroke 초기화
+        g2.setStroke(new BasicStroke(1f));
+    }
 }

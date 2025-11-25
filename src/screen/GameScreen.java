@@ -9,11 +9,13 @@
 	import java.util.logging.Logger;
 
 	import audio.SoundManager;
-	import engine.*;
+    import engine.*;
+    import engine.LaserBeamManager;
 	import entity.*;
 	import java.awt.event.KeyEvent;
 	import java.util.HashSet;
 	import java.util.Set;
+
 
 	import engine.level.Level;
 	import engine.level.LevelManager;
@@ -26,6 +28,10 @@
 	 *
 	 */
 	public class GameScreen extends Screen {
+		/**
+		 * Laser beam manager for handling laser beams.
+		 */
+		private LaserBeamManager laserBeamManager;
 
 		/**
 		 * Milliseconds until the screen accepts user input.
@@ -107,6 +113,7 @@
 		 * team drawing may implement
 		 */
 		private FinalBoss finalBoss;
+        private FinalBoss_3 finalBoss3;
 		/**
 		 * Time until bonus ship explosion disappears.
 		 */
@@ -286,6 +293,7 @@
 			/** Initialize the bullet Boss fired */
 			this.bossBullets = new HashSet<>();
 			this.swordWaves = new HashSet<>();
+			this.laserBeamManager = new LaserBeamManager();
 			enemyShipFormation = new EnemyShipFormation(this.currentLevel);
 			enemyShipFormation.attach(this);
 			this.enemyShipFormation.applyEnemyColorByLevel(this.currentLevel);
@@ -333,6 +341,7 @@
 			this.gameTimer = new GameTimer();
 			this.elapsedTime = 0;
 			this.finalBoss = null;
+            this.finalBoss3 = null;
 			this.omegaBoss = null;
 			this.SamuraiBoss = null;
 			this.currentPhase = StagePhase.wave;
@@ -429,10 +438,13 @@
 						}
 						break;
 					case boss_wave:
-						if (this.finalBoss == null && this.omegaBoss == null && this.SamuraiBoss == null) {
+						if (this.finalBoss == null && this.omegaBoss == null && this.SamuraiBoss == null && this.finalBoss3 == null) {
 							bossReveal();
 							this.enemyShipFormation.clear();
 						}
+                        if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
+                            finalBoss3Manage();
+                        }
 						if (this.finalBoss != null) {
 							finalbossManage();
 						} else if (this.omegaBoss != null) {
@@ -448,6 +460,7 @@
 								}
 							}
 						} else if (this.SamuraiBoss != null) {
+						} else if (this.finalBoss3 != null) {
 						} else {
 							if (!this.levelFinished) {
 								this.levelFinished = true;
@@ -467,21 +480,49 @@
 
 				// special enemy update
 				this.enemyShipSpecialFormation.update();
+
+				manageBulletShipCollisions();
+				manageShipEnemyCollisions();
+				manageItemCollisions();
+				manageWaveShipCollisions();
+
+				cleanBullets();
+				cleanItems();
+				cleanSwordWaves();
 			}
 
-			if (this.gameTimer.isRunning()) {
-				this.elapsedTime = this.gameTimer.getElapsedTime();
-				AchievementManager.getInstance().onTimeElapsedSeconds((int) (this.elapsedTime / 1000));
-			}
-			cleanItems();
-			cleanBullets();
-			cleanSwordWaves();
+        // Collision LaserBeam
+        if (!this.levelFinished) {
+            //P1 Collision
+            if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
+                    && laserBeamManager.checkCollisionWithShip(this.ship)) {
 
-			manageBulletShipCollisions();
-			manageShipEnemyCollisions();
-			manageWaveShipCollisions();
-			manageItemCollisions();
-			draw();
+                if (!this.ship.isInvincible()) {
+                    this.ship.destroy();
+                    this.livesP1--;
+                    showHealthPopup("-1 Health");
+                    this.logger.info("Player hit by LaserBeam!");
+
+            // P2 Collision
+                    if(this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
+                        && laserBeamManager.checkCollisionWithShip(this.shipP2)) {
+
+                       if (!this.shipP2.isInvincible()) {
+                           this.shipP2.destroy();
+                           this.livesP2--;
+                           showHealthPopup("1 Health");
+                           this.logger.info("Player2 hit by LaserBeam!");
+                       }
+                    }
+                }
+
+                laserBeamManager.update();
+                draw();
+            }
+        }
+
+        laserBeamManager.update();
+		draw();
 
 			if (((this.livesP1 == 0) && (this.shipP2 == null || this.livesP2 == 0)) && !this.levelFinished) {
 				this.levelFinished = true;
@@ -568,16 +609,35 @@
 			// special enemy draw
 			enemyShipSpecialFormation.draw();
 
-			/** draw final boss at the field */
-			/** draw final boss bullets */
-			if (this.finalBoss != null && !this.finalBoss.isDestroyed()) {
-				for (BossBullet bossBullet : bossBullets) {
-					drawManager.drawEntity(bossBullet, bossBullet.getPositionX(), bossBullet.getPositionY());
-				}
-				drawManager.drawEntity(finalBoss, finalBoss.getPositionX(), finalBoss.getPositionY());
-			}
+        // draw boss bullets (shared for any boss)
+        if (bossBullets != null) {
+            for (BossBullet bossBullet : bossBullets) {
+                drawManager.drawEntity(bossBullet, bossBullet.getPositionX(), bossBullet.getPositionY());
+            }
+        }
 
-			enemyShipFormation.draw();
+        // draw bosses
+        if (this.finalBoss != null && !this.finalBoss.isDestroyed()) {
+            drawManager.drawEntity(finalBoss, finalBoss.getPositionX(), finalBoss.getPositionY());
+        }
+
+        if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
+            drawManager.drawEntity(finalBoss3, finalBoss3.getPositionX(), finalBoss3.getPositionY());
+        }
+        if (finalBoss3 != null && finalBoss3.isLaserWarningActive()) {
+            for (float angle : finalBoss3.getPendingWarningAngles()) {
+                drawManager.drawLaserWarningLine(
+                        finalBoss3.getWarningOriginX(),
+                        finalBoss3.getWarningOriginY(),
+                        angle
+                );
+            }
+        }
+        for (LaserBeam beam : laserBeamManager.getBeams()) {
+            drawManager.drawLaserBeam(beam);
+        }
+
+		enemyShipFormation.draw();
 
 			if (this.omegaBoss != null) {
 				this.omegaBoss.draw(drawManager);
@@ -665,6 +725,20 @@
 			}
 			this.dropItems.removeAll(recyclable);
 			ItemPool.recycle(recyclable);
+		}
+
+		/**
+		 * Cleans sword waves that go off screen.
+		 */
+		private void cleanSwordWaves() {
+			Set<SwordWave> recyclable = new HashSet<SwordWave>();
+			for (SwordWave wave : this.swordWaves) {
+				wave.update();
+				if (wave.getPositionY() < SEPARATION_LINE_HEIGHT
+						|| wave.getPositionY() > this.height)
+					recyclable.add(wave);
+			}
+			this.swordWaves.removeAll(recyclable);
 		}
 
 		/**
@@ -791,6 +865,11 @@
 					/** Samurai boss is bullet immunity.*/
 					if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()
 							&& checkCollision(bullet, this.SamuraiBoss)) {
+						recyclable.add(bullet);
+					}
+
+					if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed() && checkCollision(bullet, this.finalBoss3)) {
+						this.finalBoss3.takeDamage(1);
 						recyclable.add(bullet);
 					}
 				}
@@ -1034,18 +1113,6 @@
 			}
 		}
 
-		/**
-		 * Clean up the swordwave entity.
-		 */
-		private void cleanSwordWaves() {
-			Set<SwordWave> recyclable = new HashSet<>();
-			for (SwordWave wave : this.swordWaves) {
-				wave.update();
-				if (wave.getPositionY() > this.height)
-					recyclable.add(wave);
-			}
-			this.swordWaves.removeAll(recyclable);
-		}
 
 		/**
 		 * Checks if two entities are colliding.
@@ -1152,9 +1219,14 @@
 					}
 					this.logger.info("Samurai Boss has spawned!");
 					break;
+                case "laserBoss":
+                    this.finalBoss3 = new FinalBoss_3(this.width / 2 - 50, 50, this.width, this.height, this.laserBeamManager);
+                    this.logger.info("Final Boss has spawned!");
+                    break;
 				default:
 					this.logger.warning("Unknown bossId: " + bossName);
 					break;
+
 			}
 		}
 
@@ -1321,4 +1393,56 @@
 		public final int getLivesP2() {
 			return this.livesP2;
 		}
-	}
+        public void finalBoss3Manage() {
+            if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
+                this.finalBoss3.update();
+                bossBullets.addAll(this.finalBoss3.shoot());
+
+                Set<BossBullet> bulletsToRemove = new HashSet<>();
+
+                for (BossBullet b : bossBullets) {
+                    b.update();
+
+                    if (b.isOffScreen(width, height)) {
+                        bulletsToRemove.add(b);
+                        continue;
+                    }
+
+                    // P1 충돌
+                    if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
+                            && this.checkCollision(b, this.ship)) {
+
+                        if (!this.ship.isInvincible()) {
+                            this.ship.destroy();
+                            this.livesP1--;
+                            showHealthPopup("-1 Health");
+                            this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+                        }
+                        bulletsToRemove.add(b);
+                        continue;
+                    }
+
+                    // P2 충돌
+                    if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
+                            && this.checkCollision(b, this.shipP2)) {
+
+                        if (!this.shipP2.isInvincible()) {
+                            this.shipP2.destroy();
+                            this.livesP2--;
+                            showHealthPopup("-1 Health");
+                            this.logger.info("Hit on player ship (P2), " + this.livesP2 + " lives remaining.");
+                        }
+                        bulletsToRemove.add(b);
+                    }
+                }
+
+                bossBullets.removeAll(bulletsToRemove);
+            }
+
+            if (this.finalBoss3 != null && this.finalBoss3.isDestroyed()) {
+                this.levelFinished = true;
+                this.screenFinishedCooldown.reset();
+            }
+        }
+    }
+

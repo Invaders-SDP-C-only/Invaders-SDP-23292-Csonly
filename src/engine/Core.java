@@ -276,7 +276,6 @@ public final class Core {
 
 	/**
 	 * Controls access to the file manager.
-	 * 
 	 * @return Application file manager.
 	 */
 	public static FileManager getFileManager() {
