@@ -438,7 +438,7 @@
 						}
 						break;
 					case boss_wave:
-						if (this.finalBoss == null && this.omegaBoss == null && this.SamuraiBoss == null) {
+						if (this.finalBoss == null && this.omegaBoss == null && this.SamuraiBoss == null && this.finalBoss3 == null) {
 							bossReveal();
 							this.enemyShipFormation.clear();
 						}
@@ -460,6 +460,7 @@
 								}
 							}
 						} else if (this.SamuraiBoss != null) {
+						} else if (this.finalBoss3 != null) {
 						} else {
 							if (!this.levelFinished) {
 								this.levelFinished = true;
@@ -479,6 +480,15 @@
 
 				// special enemy update
 				this.enemyShipSpecialFormation.update();
+
+				manageBulletShipCollisions();
+				manageShipEnemyCollisions();
+				manageItemCollisions();
+				manageWaveShipCollisions();
+
+				cleanBullets();
+				cleanItems();
+				cleanSwordWaves();
 			}
 
         // Collision LaserBeam
@@ -718,6 +728,20 @@
 		}
 
 		/**
+		 * Cleans sword waves that go off screen.
+		 */
+		private void cleanSwordWaves() {
+			Set<SwordWave> recyclable = new HashSet<SwordWave>();
+			for (SwordWave wave : this.swordWaves) {
+				wave.update();
+				if (wave.getPositionY() < SEPARATION_LINE_HEIGHT
+						|| wave.getPositionY() > this.height)
+					recyclable.add(wave);
+			}
+			this.swordWaves.removeAll(recyclable);
+		}
+
+		/**
 		 * Manages collisions between bullets and ships.
 		 */
 		private void manageBulletShipCollisions() {
@@ -841,6 +865,11 @@
 					/** Samurai boss is bullet immunity.*/
 					if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()
 							&& checkCollision(bullet, this.SamuraiBoss)) {
+						recyclable.add(bullet);
+					}
+
+					if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed() && checkCollision(bullet, this.finalBoss3)) {
+						this.finalBoss3.takeDamage(1);
 						recyclable.add(bullet);
 					}
 				}
@@ -1190,13 +1219,14 @@
 					}
 					this.logger.info("Samurai Boss has spawned!");
 					break;
-				default:
-					this.logger.warning("Unknown bossId: " + bossName);
-					break;
-                case "finalBoss3":
+                case "laserBoss":
                     this.finalBoss3 = new FinalBoss_3(this.width / 2 - 50, 50, this.width, this.height, this.laserBeamManager);
                     this.logger.info("Final Boss has spawned!");
                     break;
+				default:
+					this.logger.warning("Unknown bossId: " + bossName);
+					break;
+
 			}
 		}
 
