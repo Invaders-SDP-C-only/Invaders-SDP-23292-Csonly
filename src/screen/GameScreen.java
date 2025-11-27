@@ -49,10 +49,10 @@
 		 * Maximum variance in the time between bonus ship's appearances.
 		 */
 		private static final int BONUS_SHIP_VARIANCE = 10000;
-		/**
-		 * Time until bonus ship explosion disappears.
-		 */
-		private static final int BONUS_SHIP_EXPLOSION = 500;
+/**
+ * Time until bonus ship explosion disappears.
+ */
+private static final int BONUS_SHIP_EXPLOSION = 500;
 		/**
 		 * Time until bonus ship explosion disappears.
 		 */
@@ -244,6 +244,8 @@
 		private Cooldown healthPopupCooldown;
 
 		private GameState gameState;
+        private PauseManager pauseManager;
+        private boolean escLast;
 
 		/**
 		 * Constructor, establishes the properties of the screen.
@@ -345,6 +347,8 @@
 			this.omegaBoss = null;
 			this.SamuraiBoss = null;
 			this.currentPhase = StagePhase.wave;
+            this.pauseManager = new PauseManager();
+            this.escLast = false;
 		}
 
 		/**
@@ -367,6 +371,39 @@
 		 */
 		protected final void update() {
 			super.update();
+
+			// ESC toggles pause menu. When paused, only process pause navigation.
+			boolean esc = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
+			boolean inputReady = this.inputDelay.checkFinished();
+
+			if (inputReady && esc && !escLast && !this.levelFinished) {
+				pauseManager.togglePause();
+				pauseManager.resetFlags();
+				if (pauseManager.isPaused() && this.gameTimer.isRunning()) {
+					this.gameTimer.stop();
+				}
+			}
+			escLast = esc;
+
+			if (pauseManager.isPaused()) {
+				pauseManager.update(inputManager);
+
+				if (pauseManager.wantQuit) {
+					this.returnCode = 1; // Back to title
+					this.isRunning = false;
+				} else if (pauseManager.wantReset) {
+					this.returnCode = 2; // Restart current level
+					this.isRunning = false;
+				} else if (!pauseManager.isPaused() && inputReady) {
+					if (!this.gameTimer.isRunning()) {
+						this.gameTimer.start();
+					}
+				}
+
+				pauseManager.resetFlags();
+				draw();
+				return;
+			}
 
 			if (this.inputDelay.checkFinished() && !this.levelFinished) {
 
@@ -691,6 +728,10 @@
 				drawManager.drawHorizontalLine(this, this.height / 2 + this.height
 						/ 12);
 			}
+            if (pauseManager != null && pauseManager.isPaused()) {
+                drawManager.drawPauseOverlay(this);
+                drawManager.drawPauseMenu(this, pauseManager.getMenuIndex());
+            }
 
 			drawManager.completeDrawing(this);
 		}
@@ -1445,4 +1486,3 @@
             }
         }
     }
-

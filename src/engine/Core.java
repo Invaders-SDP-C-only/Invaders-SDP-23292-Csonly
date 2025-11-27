@@ -128,12 +128,23 @@ public final class Core {
                     gameState = new GameState(1, 0, livesP1, livesP2, 0, 0, gameState.getCoin());
 
                     // ===== Main game loop across levels =====
+                    boolean exitToTitle = false;
                     do {
                         boolean isBonusLevel = gameState.getLevel() % EXTRA_LIFE_FRECUENCY == 0;
                         boolean p1CanGain   = gameState.getLivesRemaining()    > 0 && gameState.getLivesRemaining()    < MAX_LIVES;
                         boolean p2CanGain   = gameState.getLivesRemainingP2()  > 0 && gameState.getLivesRemainingP2()  < MAX_LIVES;
                         boolean bonusLife   = isBonusLevel && (p1CanGain || p2CanGain);
 
+                        // Store state before running level so we can restart if requested.
+                        GameState levelStartState = new GameState(
+                                gameState.getLevel(),
+                                gameState.getScore(),
+                                gameState.getLivesRemaining(),
+                                gameState.getLivesRemainingP2(),
+                                gameState.getBulletsShot(),
+                                gameState.getShipsDestroyed(),
+                                gameState.getCoin()
+                        );
                         // Level music
                         SoundManager.stopAll();
                         SoundManager.playLoop("sfx/level" + gameState.getLevel() + ".wav");
@@ -157,11 +168,29 @@ public final class Core {
                         );
 
                         LOGGER.info("Starting " + WIDTH + "x" + HEIGHT + " game screen at " + FPS + " fps.");
-                        frame.setScreen(currentScreen);
+                        int gameReturnCode = frame.setScreen(currentScreen);
                         LOGGER.info("Closing game screen.");
 
                         // Pull back the updated game state
                         gameState = ((GameScreen) currentScreen).getGameState();
+
+                        // Handle pause menu navigation outcomes.
+                        if (gameReturnCode == 1) { // Quit to title
+                            exitToTitle = true;
+                            break;
+                        } else if (gameReturnCode == 2) { // Restart current level
+                            // Restart from level 1, fresh state.
+                            gameState = new GameState(
+                                    1,
+                                    0,
+                                    livesP1,
+                                    livesP2,
+                                    0,
+                                    0,
+                                    0
+                            );
+                            continue;
+                        }
 
                         // Between-level shop if anyone is still alive
                         if (gameState.getLivesRemaining() > 0 || gameState.getLivesRemainingP2() > 0) {
@@ -184,6 +213,11 @@ public final class Core {
                             );
                         }
                     } while (gameState.getLivesRemaining() > 0 || gameState.getLivesRemainingP2() > 0);
+
+                    if (exitToTitle) {
+                        returnCode = 1;
+                        break;
+                    }
 
                     // Game over and score screen
                     SoundManager.stopAll();
