@@ -131,6 +131,10 @@ public final class DrawManager {
 		return instance;
 	}
 
+	public Graphics getBackBufferGraphics() {
+		return backBufferGraphics;
+	}
+
 	/**
 	 * Sets the frame to draw the image on.
 	 */

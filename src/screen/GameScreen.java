@@ -1,13 +1,5 @@
 package screen;
-
-import java.awt.Color;
-import java.util.List;
-import java.util.ArrayList;
-import java.awt.event.KeyEvent;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.logging.Logger;
-
+import java.awt.Graphics;
 import engine.Cooldown;
 import engine.Core;
 import engine.GameState;
@@ -19,6 +11,9 @@ import java.awt.event.KeyEvent;
 import java.util.HashSet;
 import java.util.Set;
 
+import java.awt.Color;
+import java.util.List;
+import java.util.ArrayList;
 import engine.level.Level;
 import engine.level.LevelManager;
 
@@ -72,6 +67,7 @@ public class GameScreen extends Screen {
 	private Cooldown enemyShipSpecialCooldown;
 	/** team drawing may implement */
 	private FinalBoss finalBoss;
+	private Boss4 boss4;
 	/** Time until bonus ship explosion disappears. */
 	private Cooldown enemyShipSpecialExplosionCooldown;
 	/** Time until Boss explosion disappears. */
@@ -230,6 +226,7 @@ public class GameScreen extends Screen {
         this.elapsedTime = 0;
 		this.finalBoss = null;
 		this.omegaBoss = null;
+		this.boss4 = null;
 		this.currentPhase = StagePhase.wave;
 	}
 
@@ -324,7 +321,7 @@ public class GameScreen extends Screen {
 					}
 					break;
 				case boss_wave:
-					if (this.finalBoss == null && this.omegaBoss == null){
+					if (this.finalBoss == null && this.omegaBoss == null && this.boss4 == null){
 						bossReveal();
 						this.enemyShipFormation.clear();
 					}
@@ -343,6 +340,9 @@ public class GameScreen extends Screen {
 								this.screenFinishedCooldown.reset();
 							}
 						}
+					}
+					else if (this.boss4 != null){
+						boss4Manage();
 					}
 					else{
 						if(!this.levelFinished){
@@ -409,6 +409,7 @@ public class GameScreen extends Screen {
 	 */
 	private void draw() {
 		drawManager.initDrawing(this);
+		Graphics g = drawManager.getBackBufferGraphics();
 
 		if (this.livesP1 > 0) {
 			drawManager.drawEntity(this.ship, this.ship.getPositionX(),
@@ -422,13 +423,12 @@ public class GameScreen extends Screen {
 		// special enemy draw
 		enemyShipSpecialFormation.draw();
 
-		/** draw final boss at the field */
-		/** draw final boss bullets */
 		if(this.finalBoss != null && !this.finalBoss.isDestroyed()){
-			for (BossBullet bossBullet : bossBullets) {
-				drawManager.drawEntity(bossBullet, bossBullet.getPositionX(), bossBullet.getPositionY());
-			}
 			drawManager.drawEntity(finalBoss, finalBoss.getPositionX(), finalBoss.getPositionY());
+		}
+
+		if(this.boss4 != null && !this.boss4.isDestroyed()){
+			this.boss4.draw(g);
 		}
 
 		enemyShipFormation.draw();
@@ -440,6 +440,9 @@ public class GameScreen extends Screen {
 		for (Bullet bullet : this.bullets)
 			drawManager.drawEntity(bullet, bullet.getPositionX(),
 					bullet.getPositionY());
+
+		for (BossBullet bossBullet : this.bossBullets)
+			drawManager.drawEntity(bossBullet, bossBullet.getPositionX(), bossBullet.getPositionY());
 
 		for (DropItem dropItem : this.dropItems)
 			drawManager.drawEntity(dropItem, dropItem.getPositionX(), dropItem.getPositionY());
@@ -637,6 +640,17 @@ public class GameScreen extends Screen {
 					}
 					recyclable.add(bullet);
 				}
+				if(this.boss4 != null && !this.boss4.isDestroyed() && checkCollision(bullet,this.boss4)){
+					this.boss4.takeDamage(1);
+					if(this.boss4.getHealPoint() <= 0){
+						int pts = this.boss4.getPointValue();
+						addPointsFor(bullet, pts);
+						this.coin += (pts / 10);
+						this.boss4.destroy();
+						AchievementManager.getInstance().unlockAchievement("Boss Slayer");
+					}
+					recyclable.add(bullet);
+				}
             }
         this.bullets.removeAll(recyclable);
         BulletPool.recycle(recyclable);
@@ -698,6 +712,15 @@ public class GameScreen extends Screen {
                         + " lives remaining.");
                 return;
             }
+			if (this.boss4 != null && !this.boss4.isDestroyed()
+                    && checkCollision(this.ship, this.boss4)) {
+                this.ship.destroy();
+                this.livesP1--;
+                showHealthPopup("-1 Life (Boss Collision!)");
+                this.logger.info("Ship collided with boss4! " + this.livesP1
+                        + " lives remaining.");
+                return;
+            }
         }
 
         // ===== P2 collision check =====
@@ -748,6 +771,15 @@ public class GameScreen extends Screen {
                 this.livesP2--;
                 showHealthPopup("-1 Life (Boss Collision!)");
                 this.logger.info("Ship P2 collided with final boss! " + this.livesP2
+                        + " lives remaining.");
+                return;
+            }
+			if (this.boss4 != null && !this.boss4.isDestroyed()
+                    && checkCollision(this.shipP2, this.boss4)) {
+                this.shipP2.destroy();
+                this.livesP2--;
+                showHealthPopup("-1 Life (Boss Collision!)");
+                this.logger.info("Ship P2 collided with boss4! " + this.livesP2
                         + " lives remaining.");
                 return;
             }
@@ -937,6 +969,10 @@ public class GameScreen extends Screen {
 				omegaBoss.attach(this);
 				this.logger.info("Omega Boss has spawned!");
 				break;
+			case "boss4":
+				this.boss4 = new Boss4(this.width / 2 - 50, 50, this.width, this.height);
+				this.logger.info("Boss4 has spawned!");
+				break;
 			default:
 				this.logger.warning("Unknown bossId: " + bossName);
 				break;
@@ -995,6 +1031,64 @@ public class GameScreen extends Screen {
 
 		}
 		if (this.finalBoss != null && this.finalBoss.isDestroyed()) {
+			this.levelFinished = true;
+			this.screenFinishedCooldown.reset();
+		}
+	}
+
+	public void boss4Manage(){
+		if (this.boss4 != null && !this.boss4.isDestroyed()) {
+			this.boss4.update();
+
+			// Check for spell card survival bonus
+			if (this.boss4.hasSurvivedSpellCard()) {
+				this.score += 5000; // Survival bonus
+				this.scoreP1 += 5000; // Award to P1 by default
+				this.logger.info("Awarded 5000 points for surviving the spell card.");
+				this.boss4.resetSurvivalFlag();
+			}
+
+			/** called the boss shoot logic */
+			if (this.boss4.isSpellCardActive()) {
+				bossBullets.addAll(this.boss4.shootSpellCard(this.ship));
+			} else {
+				bossBullets.addAll(this.boss4.shootNormal());
+			}
+
+
+			/** bullets to erase */
+			Set<BossBullet> bulletsToRemove = new HashSet<>();
+
+			for (BossBullet b : bossBullets) {
+				b.update();
+				/** If the bullet goes off the screen */
+				if (b.isOffScreen(width, height)) {
+					/** bulletsToRemove carry bullet */
+					bulletsToRemove.add(b);
+				}
+				/** If the bullet collides with ship */
+				else if (this.livesP1 > 0 && this.checkCollision(b, this.ship)) {
+					if (!this.ship.isDestroyed()) {
+						this.ship.destroy();
+						this.livesP1--;
+						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+					}
+					bulletsToRemove.add(b);
+				}
+				else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed() && this.checkCollision(b, this.shipP2)) {
+					if (!this.shipP2.isDestroyed()) {
+						this.shipP2.destroy();
+						this.livesP2--;
+						this.logger.info("Hit on player ship, " + this.livesP2 + " lives remaining.");
+					}
+					bulletsToRemove.add(b);
+				}
+			}
+			/** all bullets are removed */
+			bossBullets.removeAll(bulletsToRemove);
+
+		}
+		if (this.boss4 != null && this.boss4.isDestroyed()) {
 			this.levelFinished = true;
 			this.screenFinishedCooldown.reset();
 		}
