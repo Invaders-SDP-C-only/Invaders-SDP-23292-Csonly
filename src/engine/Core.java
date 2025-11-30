@@ -239,7 +239,7 @@ public final class Core {
         fileHandler.close();
         System.exit(0);
 	}
-
+ 
 	/**
 	 * Constructor, not called.
 	 */
@@ -276,7 +276,6 @@ public final class Core {
 
 	/**
 	 * Controls access to the file manager.
-	 * 
 	 * @return Application file manager.
 	 */
 	public static FileManager getFileManager() {

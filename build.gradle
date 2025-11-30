@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id 'application'
+    id "org.sonarqube" version "7.1.0.6387"
+}
+
+sonar {
+    properties {
+        // SonarQube가 알려준 키값 그대로 입력
+        property "sonar.projectKey", "Invaders-SDP-C-only_Invaders-SDP-23292-Csonly"
+        property "sonar.organization", "invaders-sdp-c-only"
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Add any dependencies here, e.g.,
+    // implementation 'com.google.guava:guava:31.0.1-jre'
+}
+
+application {
+    mainClass = 'engine.Core'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+        resources {
+            srcDirs = ['res']
+        }
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'engine.Core'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
