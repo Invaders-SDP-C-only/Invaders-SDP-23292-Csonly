@@ -250,6 +250,6 @@ public class Ship extends Entity {
 	 * Getter for the player melee mode effect.
 	 */
 	public final Entity getSwordSlashEffect() {
-	return this.swordSlashEffect;
-}
+		return this.swordSlashEffect;
+	}
 }

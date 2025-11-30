@@ -77,6 +77,8 @@ public class GameScreen extends Screen {
 	private MidBoss omegaBoss;
 	/** SamuraiBoss */
 	private SamuraiBoss SamuraiBoss;
+	/** boss4 */
+	private Boss4 boss4;
 	/** SamuraiBoss Sword wave pattern. */
 	private Set<SwordWave> swordWaves;
 	/** Set of all bullets fired by on-screen ships. */
@@ -146,6 +148,8 @@ public class GameScreen extends Screen {
 	/** Health change popup. */
 	private String healthPopupText;
 	private Cooldown healthPopupCooldown;
+
+	private boolean smallHitboxMode = false;
 
 	private GameState gameState;
 
@@ -245,6 +249,7 @@ public class GameScreen extends Screen {
 		this.finalBoss3 = null;
 		this.omegaBoss = null;
 		this.SamuraiBoss = null;
+		this.boss4 = null;
 		this.currentPhase = StagePhase.wave;
 	}
 
@@ -367,7 +372,7 @@ public class GameScreen extends Screen {
 					} else if (this.finalBoss3 != null) {
 						// already handled
 					} else if (this.boss4 != null) {
-						// boss4 managed separately below in update()
+						boss4Manage();
 					} else {
 						if (!this.levelFinished) {
 							this.levelFinished = true;
@@ -474,6 +479,10 @@ public class GameScreen extends Screen {
 		if (this.livesP1 > 0) {
 			drawManager.drawEntity(this.ship, this.ship.getPositionX(),
 					this.ship.getPositionY());
+			if (this.smallHitboxMode) {
+				g.setColor(Color.WHITE);
+				g.fillRect(this.ship.getPositionX() + this.ship.getWidth() / 2 - 2, this.ship.getPositionY() + this.ship.getHeight() / 2 - 2, 5, 5);
+			}
 
 			if (this.ship.isParrying()) {
 				Entity slash = this.ship.getSwordSlashEffect();
@@ -483,6 +492,10 @@ public class GameScreen extends Screen {
 
 		if (this.shipP2 != null && this.livesP2 > 0) {
 			drawManager.drawEntity(this.shipP2, this.shipP2.getPositionX(), this.shipP2.getPositionY());
+			if (this.smallHitboxMode) {
+				g.setColor(Color.WHITE);
+				g.fillRect(this.shipP2.getPositionX() + this.shipP2.getWidth() / 2 - 2, this.shipP2.getPositionY() + this.shipP2.getHeight() / 2 - 2, 5, 5);
+			}
 
 			if (this.shipP2.isParrying()) {
 				Entity slashP2 = this.shipP2.getSwordSlashEffect();
@@ -781,6 +794,11 @@ public class GameScreen extends Screen {
 					this.finalBoss3.takeDamage(1);
 					recyclable.add(bullet);
 				}
+
+				if (this.boss4 != null && !this.boss4.isDestroyed() && checkCollision(bullet, this.boss4)) {
+					this.boss4.takeDamage(1);
+					recyclable.add(bullet);
+				}
 			}
 		this.bullets.removeAll(recyclable);
 		BulletPool.recycle(recyclable);
@@ -1053,14 +1071,26 @@ public class GameScreen extends Screen {
 	 * @return Result of the collision test.
 	 */
 	private boolean checkCollision(final Entity a, final Entity b) {
+		Entity hitboxA = a;
+		Entity hitboxB = b;
+
+		if (this.smallHitboxMode) {
+			if (a == this.ship || a == this.shipP2) {
+				hitboxA = new Entity(a.getPositionX() + a.getWidth() / 2 - 2, a.getPositionY() + a.getHeight() / 2 - 2, 5, 5, a.getColor());
+			}
+			if (b == this.ship || b == this.shipP2) {
+				hitboxB = new Entity(b.getPositionX() + b.getWidth() / 2 - 2, b.getPositionY() + b.getHeight() / 2 - 2, 5, 5, b.getColor());
+			}
+		}
+
 		// Calculate center point of the entities in both axis.
-		int centerAX = a.getPositionX() + a.getWidth() / 2;
-		int centerAY = a.getPositionY() + a.getHeight() / 2;
-		int centerBX = b.getPositionX() + b.getWidth() / 2;
-		int centerBY = b.getPositionY() + b.getHeight() / 2;
+		int centerAX = hitboxA.getPositionX() + hitboxA.getWidth() / 2;
+		int centerAY = hitboxA.getPositionY() + hitboxA.getHeight() / 2;
+		int centerBX = hitboxB.getPositionX() + hitboxB.getWidth() / 2;
+		int centerBY = hitboxB.getPositionY() + hitboxB.getHeight() / 2;
 		// Calculate maximum distance without collision.
-		int maxDistanceX = a.getWidth() / 2 + b.getWidth() / 2;
-		int maxDistanceY = a.getHeight() / 2 + b.getHeight() / 2;
+		int maxDistanceX = hitboxA.getWidth() / 2 + hitboxB.getWidth() / 2;
+		int maxDistanceY = hitboxA.getHeight() / 2 + hitboxB.getHeight() / 2;
 		// Calculates distance.
 		int distanceX = Math.abs(centerAX - centerBX);
 		int distanceY = Math.abs(centerAY - centerBY);
@@ -1158,6 +1188,7 @@ public class GameScreen extends Screen {
 				break;
 			case "boss4":
 				this.boss4 = new Boss4(this.width / 2 - 50, 50, this.width, this.height);
+				this.smallHitboxMode = true;
 				this.logger.info("Boss4 has spawned!");
 				break;
 			default:
@@ -1387,6 +1418,7 @@ public class GameScreen extends Screen {
 		if (this.boss4 != null && this.boss4.isDestroyed()) {
 			this.levelFinished = true;
 			this.screenFinishedCooldown.reset();
+			this.smallHitboxMode = false;
 		}
 	}
 
