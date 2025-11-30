@@ -54,6 +54,9 @@ public final class DrawManager {
     private static Font fontSmall;
     /** Small sized font properties. */
     private static FontMetrics fontSmallMetrics;
+    /** Pause menu animation state. */
+    private static long lastPauseMenuDrawTime = 0L;
+    private static float pauseMenuAnimProgress = 1f;
 
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
@@ -896,4 +899,63 @@ public final class DrawManager {
         // Stroke 초기화
         g2.setStroke(new BasicStroke(1f));
     }
+    public void drawPauseOverlay(final screen.Screen screen) {
+        backBufferGraphics.setColor(new java.awt.Color(0, 0, 0, 150));
+        backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+    }
+    public void drawPauseMenu(final screen.Screen screen, final int menuIndex) {
+        String[] menu = { "Quit Game", "Restart", "Return" };
+
+        backBufferGraphics.setFont(fontBig);
+
+        // Position menu slightly above center.
+        int centerX = screen.getWidth() / 2;
+        int baseCenterY = screen.getHeight() / 2 - 40;
+
+        // Simple drop-in animation: reset progress if menu has been closed for a bit.
+        long now = System.currentTimeMillis();
+        if (now - lastPauseMenuDrawTime > 300) {
+            pauseMenuAnimProgress = 0f;
+        }
+        pauseMenuAnimProgress = Math.min(1f, pauseMenuAnimProgress + 0.12f);
+        lastPauseMenuDrawTime = now;
+        // Start higher and ease to the target.
+        int centerY = baseCenterY + (int) ((1f - pauseMenuAnimProgress) * -40);
+
+        // Measure widest text to size the container.
+        int maxTextWidth = 0;
+        for (String text : menu) {
+            maxTextWidth = Math.max(maxTextWidth, fontBigMetrics.stringWidth(text));
+        }
+
+        int lineHeight = fontBigMetrics.getHeight();
+        int itemSpacing = 40;
+        int boxPadding = 24;
+        int boxWidth = maxTextWidth + boxPadding * 2;
+        int boxHeight = itemSpacing * menu.length + boxPadding;
+
+        int boxX = centerX - boxWidth / 2;
+        int boxY = centerY - boxHeight / 2;
+
+        // Draw container with semi-transparent fill and border.
+        backBufferGraphics.setColor(new java.awt.Color(0, 0, 0, 180));
+        backBufferGraphics.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 16, 16);
+        // Border uses game accent green.
+        backBufferGraphics.setColor(new java.awt.Color(0, 200, 70, 200));
+        backBufferGraphics.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 16, 16);
+
+        for (int i = 0; i < menu.length; i++) {
+            if (i == menuIndex)
+                backBufferGraphics.setColor(java.awt.Color.YELLOW);
+            else
+                backBufferGraphics.setColor(java.awt.Color.WHITE);
+
+            String text = menu[i];
+            int width = fontBigMetrics.stringWidth(text);
+            int y = boxY + boxPadding + (i * itemSpacing) + lineHeight / 2;
+
+            backBufferGraphics.drawString(text, centerX - width / 2, y);
+        }
+    }
+
 }

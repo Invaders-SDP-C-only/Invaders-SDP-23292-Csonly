@@ -153,6 +153,15 @@ public class GameScreen extends Screen {
 
 	private GameState gameState;
 
+	/** Input delay cooldown (was referenced in code). */
+	private Cooldown inputDelay;
+
+    private PauseManager pauseManager;
+    private boolean escLast;
+
+	/** Laser beam manager for handling laser beams. */
+	// (already declared above as laserBeamManager)
+
 	/**
 	 * Constructor, establishes the properties of the screen.
 	 *
@@ -223,7 +232,6 @@ public class GameScreen extends Screen {
 
 		this.bossExplosionCooldown = Core.getCooldown(BOSS_EXPLOSION);
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
-
 		this.bullets = new HashSet<Bullet>();
 		this.dropItems = new HashSet<DropItem>();
 
@@ -251,6 +259,9 @@ public class GameScreen extends Screen {
 		this.SamuraiBoss = null;
 		this.boss4 = null;
 		this.currentPhase = StagePhase.wave;
+
+        this.pauseManager = new PauseManager();
+        this.escLast = false;
 	}
 
 	/**
@@ -261,10 +272,8 @@ public class GameScreen extends Screen {
 	public final int run() {
 		super.run();
 
-		this.score += LIFE_SCORE * (this.livesP1 - 1);
-		this.score += LIFE_SCORE * (this.livesP2 - 1);
-		this.logger.info("Screen cleared with a score of " + this.score);
-
+		// legacy end-of-screen score addition is performed when screen finishes.
+		// Actual gameplay loop updates happen via update() called externally.
 		return this.returnCode;
 	}
 
@@ -273,6 +282,39 @@ public class GameScreen extends Screen {
 	 */
 	protected final void update() {
 		super.update();
+
+		// ----- Pause handling (from feature branch) -----
+		boolean esc = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
+		boolean inputReady = (this.inputDelay != null && this.inputDelay.checkFinished());
+
+		if (inputReady && esc && !escLast && !this.levelFinished) {
+			pauseManager.togglePause();
+			pauseManager.resetFlags();
+			if (pauseManager.isPaused() && this.gameTimer != null && this.gameTimer.isRunning()) {
+				this.gameTimer.stop();
+			}
+		}
+		escLast = esc;
+
+		if (pauseManager.isPaused()) {
+			pauseManager.update(inputManager);
+
+			if (pauseManager.wantQuit) {
+				this.returnCode = 1; // Back to title
+				this.isRunning = false;
+			} else if (pauseManager.wantReset) {
+				this.returnCode = 2; // Restart current level
+				this.isRunning = false;
+			} else if (!pauseManager.isPaused() && inputReady) {
+				if (this.gameTimer != null && !this.gameTimer.isRunning()) {
+					this.gameTimer.start();
+				}
+			}
+
+			pauseManager.resetFlags();
+			draw();
+			return;
+		}
 
 		if (this.inputDelay.checkFinished() && !this.levelFinished) {
 
@@ -466,6 +508,10 @@ public class GameScreen extends Screen {
 				}
 			}
 			this.isRunning = false;
+			// award life score when the screen finishes
+			this.score += LIFE_SCORE * (this.livesP1 - 1);
+			this.score += LIFE_SCORE * (this.livesP2 - 1);
+			this.logger.info("Screen cleared with a score of " + this.score);
 		}
 	}
 
@@ -553,6 +599,12 @@ public class GameScreen extends Screen {
 				);
 			}
 		}
+
+        if (pauseManager != null && pauseManager.isPaused()) {
+            drawManager.drawPauseOverlay(this);
+            drawManager.drawPauseMenu(this, pauseManager.getMenuIndex());
+        }
+
 		for (LaserBeam beam : laserBeamManager.getBeams()) {
 			drawManager.drawLaserBeam(beam);
 		}
