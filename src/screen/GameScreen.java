@@ -600,10 +600,7 @@ public class GameScreen extends Screen {
 			}
 		}
 
-        if (pauseManager != null && pauseManager.isPaused()) {
-            drawManager.drawPauseOverlay(this);
-            drawManager.drawPauseMenu(this, pauseManager.getMenuIndex());
-        }
+
 
 		for (LaserBeam beam : laserBeamManager.getBeams()) {
 			drawManager.drawLaserBeam(beam);
@@ -667,6 +664,12 @@ public class GameScreen extends Screen {
 					/ 12);
 			drawManager.drawHorizontalLine(this, this.height / 2 + this.height
 					/ 12);
+		}
+
+		// If paused, draw the overlay and menu on top of the frozen game screen.
+		if (this.pauseManager.isPaused()) {
+			drawManager.drawPauseOverlay(this);
+			drawManager.drawPauseMenu(this, this.pauseManager.getMenuIndex());
 		}
 
 		drawManager.completeDrawing(this);
