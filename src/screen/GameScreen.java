@@ -588,14 +588,25 @@ public class GameScreen extends Screen {
 		}
 
 		if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
-			drawManager.drawEntity(finalBoss3, finalBoss3.getPositionX(), finalBoss3.getPositionY());
+			drawManager.drawLaserBoss(finalBoss3);
+			drawManager.drawBossHealthBar(this, this.finalBoss3.getHealPoint(), this.finalBoss3.getMaxHp());
+		}
+		if (this.finalBoss3 != null && this.finalBoss3.isBossWaveActiveOrTransition()) {
+			drawManager.drawBossWaveDim(this, 0.35f);
+		}
+		if (this.finalBoss3 != null && this.finalBoss3.isBossWaveActive()) {
+			drawManager.drawBossGlow(finalBoss3.getPositionX(), finalBoss3.getPositionY(), finalBoss3.getWidth(), finalBoss3.getHeight(), 1f);
 		}
 		if (finalBoss3 != null && finalBoss3.isLaserWarningActive()) {
+			Color warnColor = finalBoss3.isBossWaveWarningActive()
+					? new Color(255, 80, 80, 200)
+					: new Color(0, 255, 255, 180);
 			for (float angle : finalBoss3.getPendingWarningAngles()) {
 				drawManager.drawLaserWarningLine(
 						finalBoss3.getWarningOriginX(),
 						finalBoss3.getWarningOriginY(),
-						angle
+						angle,
+						warnColor
 				);
 			}
 		}
@@ -1205,7 +1216,6 @@ public class GameScreen extends Screen {
 	 */
 	private void bossReveal() {
 		String bossName = this.currentlevel.getBossId();
-
 		if (bossName == null || bossName.isEmpty()) {
 			this.logger.info("No boss for this level. Proceeding to finish.");
 			this.levelFinished = true;
