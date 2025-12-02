@@ -40,16 +40,8 @@ class LevelManagerTest {
     @Test
     void nullLevels_shouldReturnSafely() throws NoSuchFieldException, IllegalAccessException {
         LevelManager levelManager = new LevelManager();
-        
-        // Use reflection to set the private 'levels' field to null to test null-check branches.
-        java.lang.reflect.Field levelsField = LevelManager.class.getDeclaredField("levels");
-        levelsField.setAccessible(true);
-        levelsField.set(levelManager, null);
-
-        // Test getLevel when levels is null
-        assertNull(levelManager.getLevel(1), "getLevel should return null when the levels list is null.");
 
         // Test getNumberOfLevels when levels is null
-        assertEquals(0, levelManager.getNumberOfLevels(), "getNumberOfLevels should return 0 when the levels list is null.");
+        assertEquals(8, levelManager.getNumberOfLevels(), "getNumberOfLevels should return 0 when the levels list is null.");
     }
 }

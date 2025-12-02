@@ -10,6 +10,9 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.security.AccessController; // 추가됨
+import java.security.PrivilegedAction; // 추가됨
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,19 +38,25 @@ class AchievementManagerTest {
 
         // Reset the singleton instance so each test gets a fresh one
         try {
-            java.lang.reflect.Field instanceField = AchievementManager.class.getDeclaredField("instance");
-            instanceField.setAccessible(true);
+            Field instanceField = AchievementManager.class.getDeclaredField("instance");
+
+            // [Option 2] setAccessible을 doPrivileged 블록으로 감쌉니다.
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                instanceField.setAccessible(true);
+                return null;
+            });
+
             instanceField.set(null, null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        
+
         // Mock the loadAchievements behavior for the constructor call
         when(fileManagerMock.loadAchievements()).thenReturn(new HashMap<>());
-        
+
         // getInstance() will now create a new instance with fresh fields
         achievementManager = AchievementManager.getInstance();
-        
+
         // Clear invocations that happened during constructor
         clearInvocations(fileManagerMock);
     }
@@ -64,7 +73,7 @@ class AchievementManagerTest {
         unlockedStatus.put("Beginner", true);
         unlockedStatus.put("Boss Slayer", true);
         unlockedStatus.put("Intermediate", false); // Explicitly false
-        
+
         when(fileManagerMock.loadAchievements()).thenReturn(unlockedStatus);
 
         // Act
@@ -108,7 +117,7 @@ class AchievementManagerTest {
         // Arrange: unlock it once
         achievementManager.unlockAchievement("Intermediate");
         verify(fileManagerMock, times(1)).saveAchievements(any()); // Verify initial save
-        
+
         // Act: unlock it again
         achievementManager.unlockAchievement("Intermediate");
 
@@ -150,7 +159,7 @@ class AchievementManagerTest {
         // Arrange
         achievementManager.onTimeElapsedSeconds(60); // Unlock first time
         verify(fileManagerMock, times(1)).saveAchievements(any());
-        
+
         // Act
         achievementManager.onTimeElapsedSeconds(120); // Call again
 
@@ -214,7 +223,7 @@ class AchievementManagerTest {
             achievementManager.onEnemyDefeated();
         }
         assertFalse(getAchievement("Bad Sniper").isUnlocked(), "Should not unlock before 6 shots");
-        
+
         // Act: Fire the 6th shot and get the 6th hit. Now the check is active.
         achievementManager.onShotFired();     // 6 shots total
         achievementManager.onEnemyDefeated(); // 6 hits total
@@ -234,7 +243,7 @@ class AchievementManagerTest {
         // Assert
         assertFalse(getAchievement("Bad Sniper").isUnlocked());
     }
-    
+
     private Achievement getAchievement(String name) {
         return achievementManager.getAchievements().stream()
                 .filter(a -> a.getName().equals(name)).findFirst()

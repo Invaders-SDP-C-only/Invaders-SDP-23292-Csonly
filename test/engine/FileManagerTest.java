@@ -4,10 +4,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.security.AccessController; // 추가됨
+import java.security.PrivilegedAction; // 추가됨
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -22,10 +27,16 @@ class FileManagerTest {
         Logger logger = mock(Logger.class);
         // Get the singleton instance of FileManager
         fileManager = FileManager.getInstance();
-        
+
         // Inject mock logger into FileManager instance
-        java.lang.reflect.Field loggerField = FileManager.class.getDeclaredField("logger");
-        loggerField.setAccessible(true);
+        Field loggerField = FileManager.class.getDeclaredField("logger");
+
+        // [Option 2 적용] setAccessible을 doPrivileged 블록으로 감쌉니다.
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            loggerField.setAccessible(true);
+            return null;
+        });
+
         loggerField.set(fileManager, logger);
     }
 
@@ -36,16 +47,19 @@ class FileManagerTest {
     }
 
     @Test
-    void testLoadDefaultHighScores() throws IOException {
+    void testLoadDefaultHighScores() {
         // This test relies on the "scores" file in src/test/resources
         // The public loadHighScores() method will call loadDefaultHighScores() if it can't find a file.
-        // To force this, we can try to load from a non-existent file path.
-        // However, the path logic is complex.
-        // A better way is to test the protected loadDefaultHighScores method directly using reflection.
-        
+
         try {
-            java.lang.reflect.Method method = FileManager.class.getDeclaredMethod("loadDefaultHighScores");
-            method.setAccessible(true);
+            Method method = FileManager.class.getDeclaredMethod("loadDefaultHighScores");
+
+            // [Option 2 적용] setAccessible을 doPrivileged 블록으로 감쌉니다.
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                method.setAccessible(true);
+                return null;
+            });
+
             @SuppressWarnings("unchecked")
             List<Score> highScores = (List<Score>) method.invoke(fileManager);
 
@@ -71,14 +85,14 @@ class FileManagerTest {
         Achievement ac1 = new Achievement("Test Achievement 1", "Test Desc 1");
         ac1.unlock();
         achievements.add(ac1);
-        
+
         Achievement ac2 = new Achievement("Test Achievement 2", "Test Desc 2");
         achievements.add(ac2);
 
         fileManager.saveAchievements(achievements);
-        
+
         assertTrue(achievementsFile.exists());
-        
+
         Map<String, Boolean> loadedAchievements = fileManager.loadAchievements();
         assertEquals(2, loadedAchievements.size());
         assertTrue(loadedAchievements.get("Test Achievement 1"));
@@ -87,5 +101,4 @@ class FileManagerTest {
         // Cleanup
         achievementsFile.delete();
     }
-
 }

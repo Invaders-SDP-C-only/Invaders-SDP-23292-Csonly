@@ -8,6 +8,10 @@ import org.mockito.MockedStatic;
 import screen.Screen;
 
 import java.awt.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.security.AccessController; // 추가됨
+import java.security.PrivilegedAction; // 추가됨
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,13 +42,16 @@ class ItemHUDManagerTest {
     void testInitialize() {
         when(screen.getWidth()).thenReturn(800);
         itemHUDManager.initialize(screen);
-        // The startX calculation is: screen.getWidth() - totalFixedWidth - 20;
-        // totalFixedWidth = 5 * ITEM_SQUARE_SIZE + 4 * SQUARE_SPACING = 5 * 20 + 4 * 3 = 100 + 12 = 112
-        // startX = 800 - 112 - 20 = 668
-        // Using reflection to access private field
+
         try {
-            java.lang.reflect.Field startXField = ItemHUDManager.class.getDeclaredField("startX");
-            startXField.setAccessible(true);
+            Field startXField = ItemHUDManager.class.getDeclaredField("startX");
+
+
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                startXField.setAccessible(true);
+                return null;
+            });
+
             assertEquals(668, startXField.get(itemHUDManager));
         } catch (NoSuchFieldException | IllegalAccessException e) {
             fail("Failed to access startX field: " + e.getMessage());
@@ -85,20 +92,38 @@ class ItemHUDManagerTest {
         Object droppedItemInfo = activeDroppedItems.get(0);
 
         // Get DROPPED_ITEM_DISPLAY_DURATION using reflection
-        java.lang.reflect.Field durationField = ItemHUDManager.class.getDeclaredField("DROPPED_ITEM_DISPLAY_DURATION");
-        durationField.setAccessible(true);
+        Field durationField = ItemHUDManager.class.getDeclaredField("DROPPED_ITEM_DISPLAY_DURATION");
+
+
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            durationField.setAccessible(true);
+            return null;
+        });
+
         long duration = (long) durationField.get(null);
 
         // Manipulate displayStartTime to make the item expired
-        java.lang.reflect.Field startTimeField = droppedItemInfo.getClass().getDeclaredField("displayStartTime");
-        startTimeField.setAccessible(true);
+        Field startTimeField = droppedItemInfo.getClass().getDeclaredField("displayStartTime");
+
+
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            startTimeField.setAccessible(true);
+            return null;
+        });
+
         startTimeField.set(droppedItemInfo, System.currentTimeMillis() - duration - 1);
-        
+
         // Use reflection to call the private cleanupExpiredItems method
-        java.lang.reflect.Method cleanupMethod = ItemHUDManager.class.getDeclaredMethod("cleanupExpiredItems");
-        cleanupMethod.setAccessible(true);
+        Method cleanupMethod = ItemHUDManager.class.getDeclaredMethod("cleanupExpiredItems");
+
+
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            cleanupMethod.setAccessible(true);
+            return null;
+        });
+
         cleanupMethod.invoke(itemHUDManager);
-        
+
         assertEquals(0, activeDroppedItems.size()); // Explode should be removed
 
         itemHUDManager.addDroppedItem(DropItem.ItemType.Slow); // Now add the new item
@@ -123,13 +148,8 @@ class ItemHUDManagerTest {
 
             itemHUDManager.drawItems(screen, graphics);
 
-            // Verify drawing of fixed shop items
-            // Verify that setColor(Color.GREEN) is called for the 4 active items
             verify(graphics, times(4)).setColor(Color.GREEN);
-            // Verify that setColor(Color.DARK_GRAY) is called once for the inactive item
             verify(graphics, times(1)).setColor(Color.DARK_GRAY);
-
-            // You can add more verifications for other items and states
         }
     }
 
@@ -137,29 +157,39 @@ class ItemHUDManagerTest {
     void testPrivateHelperMethods() throws Exception {
         // Test isShopItemActive
         try (MockedStatic<ShopItem> mockedShopItem = mockStatic(ShopItem.class)) {
-            java.lang.reflect.Method isShopItemActiveMethod = ItemHUDManager.class.getDeclaredMethod("isShopItemActive", ItemHUDManager.class.getDeclaredClasses()[1]);
-            isShopItemActiveMethod.setAccessible(true);
-            
+            Method isShopItemActiveMethod = ItemHUDManager.class.getDeclaredMethod("isShopItemActive", ItemHUDManager.class.getDeclaredClasses()[1]);
+
+
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                isShopItemActiveMethod.setAccessible(true);
+                return null;
+            });
+
             mockedShopItem.when(ShopItem::isMultiShotActive).thenReturn(true);
             assertTrue((Boolean) isShopItemActiveMethod.invoke(itemHUDManager, getShopItemTypeEnum("MULTI_SHOT")));
-            
+
             mockedShopItem.when(ShopItem::getRapidFireLevel).thenReturn(1);
             assertTrue((Boolean) isShopItemActiveMethod.invoke(itemHUDManager, getShopItemTypeEnum("RAPID_FIRE")));
-            
+
             mockedShopItem.when(ShopItem::isPenetrationActive).thenReturn(true);
             assertTrue((Boolean) isShopItemActiveMethod.invoke(itemHUDManager, getShopItemTypeEnum("PENETRATION")));
-            
+
             mockedShopItem.when(ShopItem::getBulletSpeedLevel).thenReturn(1);
             assertTrue((Boolean) isShopItemActiveMethod.invoke(itemHUDManager, getShopItemTypeEnum("BULLET_SPEED")));
-            
+
             mockedShopItem.when(ShopItem::getSHIPSpeedCOUNT).thenReturn(1);
             assertTrue((Boolean) isShopItemActiveMethod.invoke(itemHUDManager, getShopItemTypeEnum("SHIP_SPEED")));
         }
 
         // Test getShopItemLevel
         try (MockedStatic<ShopItem> mockedShopItem = mockStatic(ShopItem.class)) {
-            java.lang.reflect.Method getShopItemLevelMethod = ItemHUDManager.class.getDeclaredMethod("getShopItemLevel", ItemHUDManager.class.getDeclaredClasses()[1]);
-            getShopItemLevelMethod.setAccessible(true);
+            Method getShopItemLevelMethod = ItemHUDManager.class.getDeclaredMethod("getShopItemLevel", ItemHUDManager.class.getDeclaredClasses()[1]);
+
+
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                getShopItemLevelMethod.setAccessible(true);
+                return null;
+            });
 
             mockedShopItem.when(ShopItem::getMultiShotLevel).thenReturn(1);
             assertEquals(1, (int) getShopItemLevelMethod.invoke(itemHUDManager, getShopItemTypeEnum("MULTI_SHOT")));
@@ -169,8 +199,14 @@ class ItemHUDManagerTest {
         }
 
         // Test getShopItemLetter
-        java.lang.reflect.Method getShopItemLetterMethod = ItemHUDManager.class.getDeclaredMethod("getShopItemLetter", ItemHUDManager.class.getDeclaredClasses()[1]);
-        getShopItemLetterMethod.setAccessible(true);
+        Method getShopItemLetterMethod = ItemHUDManager.class.getDeclaredMethod("getShopItemLetter", ItemHUDManager.class.getDeclaredClasses()[1]);
+
+
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            getShopItemLetterMethod.setAccessible(true);
+            return null;
+        });
+
         assertEquals("M", (String) getShopItemLetterMethod.invoke(itemHUDManager, getShopItemTypeEnum("MULTI_SHOT")));
         assertEquals("R", (String) getShopItemLetterMethod.invoke(itemHUDManager, getShopItemTypeEnum("RAPID_FIRE")));
         assertEquals("P", (String) getShopItemLetterMethod.invoke(itemHUDManager, getShopItemTypeEnum("PENETRATION")));
@@ -178,8 +214,14 @@ class ItemHUDManagerTest {
         assertEquals("S", (String) getShopItemLetterMethod.invoke(itemHUDManager, getShopItemTypeEnum("SHIP_SPEED")));
 
         // Test getDroppedItemLetter
-        java.lang.reflect.Method getDroppedItemLetterMethod = ItemHUDManager.class.getDeclaredMethod("getDroppedItemLetter", DropItem.ItemType.class);
-        getDroppedItemLetterMethod.setAccessible(true);
+        Method getDroppedItemLetterMethod = ItemHUDManager.class.getDeclaredMethod("getDroppedItemLetter", DropItem.ItemType.class);
+
+
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            getDroppedItemLetterMethod.setAccessible(true);
+            return null;
+        });
+
         assertEquals("E", (String) getDroppedItemLetterMethod.invoke(itemHUDManager, DropItem.ItemType.Explode));
         assertEquals("L", (String) getDroppedItemLetterMethod.invoke(itemHUDManager, DropItem.ItemType.Slow));
         assertEquals("T", (String) getDroppedItemLetterMethod.invoke(itemHUDManager, DropItem.ItemType.Stop));
@@ -188,8 +230,14 @@ class ItemHUDManagerTest {
         assertEquals("A", (String) getDroppedItemLetterMethod.invoke(itemHUDManager, DropItem.ItemType.Heal));
 
         // Test getDroppedItemColor
-        java.lang.reflect.Method getDroppedItemColorMethod = ItemHUDManager.class.getDeclaredMethod("getDroppedItemColor", DropItem.ItemType.class);
-        getDroppedItemColorMethod.setAccessible(true);
+        Method getDroppedItemColorMethod = ItemHUDManager.class.getDeclaredMethod("getDroppedItemColor", DropItem.ItemType.class);
+
+
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            getDroppedItemColorMethod.setAccessible(true);
+            return null;
+        });
+
         assertEquals(Color.RED, (Color) getDroppedItemColorMethod.invoke(itemHUDManager, DropItem.ItemType.Explode));
         assertEquals(Color.BLUE, (Color) getDroppedItemColorMethod.invoke(itemHUDManager, DropItem.ItemType.Slow));
         assertEquals(Color.CYAN, (Color) getDroppedItemColorMethod.invoke(itemHUDManager, DropItem.ItemType.Shield));
@@ -200,12 +248,17 @@ class ItemHUDManagerTest {
         Class<?> shopItemTypeClass = ItemHUDManager.class.getDeclaredClasses()[1];
         return Enum.valueOf((Class<Enum>)shopItemTypeClass, enumName);
     }
-    
+
     // Helper to get activeDroppedItems using reflection
     private List<?> getActiveDroppedItems(ItemHUDManager manager) {
         try {
-            java.lang.reflect.Field field = ItemHUDManager.class.getDeclaredField("activeDroppedItems");
-            field.setAccessible(true);
+            Field field = ItemHUDManager.class.getDeclaredField("activeDroppedItems");
+
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                field.setAccessible(true);
+                return null;
+            });
+
             return (List<?>) field.get(manager);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             fail("Failed to access activeDroppedItems field: " + e.getMessage());
@@ -216,8 +269,14 @@ class ItemHUDManagerTest {
     // Helper to get itemType from DroppedItemInfo using reflection
     private DropItem.ItemType getDroppedItemType(Object droppedItemInfo) {
         try {
-            java.lang.reflect.Field field = droppedItemInfo.getClass().getDeclaredField("itemType");
-            field.setAccessible(true);
+            Field field = droppedItemInfo.getClass().getDeclaredField("itemType");
+
+
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                field.setAccessible(true);
+                return null;
+            });
+
             return (DropItem.ItemType) field.get(droppedItemInfo);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             fail("Failed to access itemType field: " + e.getMessage());
