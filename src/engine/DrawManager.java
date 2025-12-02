@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 
 import entity.Entity;
 import entity.FinalBoss;
+import entity.FinalBoss_3;
 import entity.Ship;
 import engine.Achievement;
 import screen.CreditScreen;
@@ -179,7 +180,7 @@ public final class DrawManager {
 	/**
 	 * Draws an entity.
 	 */
-  public void drawEntity(final Entity entity, final int positionX, final int positionY) {
+	public void drawEntity(final Entity entity, final int positionX, final int positionY) {
 		SpriteType type = entity.getSpriteType();
 		if (type == SpriteType.FinalBossBullet && entity.getHeight() > 20) {
 			backBufferGraphics.setColor(entity.getColor());
@@ -231,6 +232,47 @@ public final class DrawManager {
 		backBufferGraphics.fillRect(x, y, barWidth, barHeight);
 		backBufferGraphics.setColor(Color.RED);
 		backBufferGraphics.fillRect(x, y, (int) (barWidth * healthPercent), barHeight);
+	}
+
+	/**
+	 * Draws a dim overlay for boss wave warning.
+	 */
+	public void drawBossWaveDim(final Screen screen, float alpha) {
+		int a = (int) (Math.max(0f, Math.min(1f, alpha)) * 180);
+		backBufferGraphics.setColor(new Color(0, 0, 0, a));
+		backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+	}
+
+	/**
+	 * Draws a simple glow around a boss.
+	 */
+	public void drawBossGlow(int x, int y, int w, int h, float alpha) {
+		Graphics2D g2 = (Graphics2D) backBufferGraphics;
+		Stroke old = g2.getStroke();
+		Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+		float a = Math.max(0f, Math.min(1f, alpha));
+		float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
+		float radiusGrow = 8f + pulse * 6f;
+
+		int cx = x + w / 2;
+		int cy = y + h / 2;
+		int rx = (int) (w / 2 + radiusGrow);
+		int ry = (int) (h / 2 + radiusGrow);
+
+		g2.setColor(new Color(255, 180, 120, (int) (60 * a)));
+		g2.setStroke(new BasicStroke(6f));
+		g2.drawOval(cx - rx, cy - ry, rx * 2, ry * 2);
+
+		g2.setColor(new Color(255, 240, 200, (int) (90 * a)));
+		g2.setStroke(new BasicStroke(3f));
+		g2.drawOval(cx - rx + 6, cy - ry + 6, (rx - 6) * 2, (ry - 6) * 2);
+
+		g2.setStroke(old);
+		if (oldAA != null) {
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+		}
 	}
 
 	/**
@@ -837,14 +879,20 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
     }
-    public void drawLaserBeam(LaserBeam beam) {
+	public void drawLaserBeam(LaserBeam beam) {
         Graphics2D g2 = (Graphics2D) backBufferGraphics;
 
         float alpha = beam.getAlphaFactor();
         if (alpha <= 0f) return;
 
-        Color laserColor = new Color(0f, 1f, 1f,alpha);
-        g2.setColor(laserColor);
+        // Save state
+        Stroke oldStroke = g2.getStroke();
+        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Two-layer beam: soft glow + bright core
+        Color glowColor = new Color(0f, 1f, 1f, Math.min(1f, alpha * 0.55f));
+        Color coreColor = new Color(0.85f, 1f, 1f, Math.min(1f, alpha * 1.1f));
 
         float x1 = beam.getOriginX();
         float y1 = beam.getOriginY();
@@ -853,30 +901,156 @@ public final class DrawManager {
         float length = beam.getLength();
         float thickness = beam.getThickness();
 
-        // 레이저 끝점
         float x2 = (float)(x1 + Math.cos(angle) * length);
         float y2 = (float)(y1 + Math.sin(angle) * length);
 
-        // 방향 수직 벡터
-        float t = beam.getThickness() / 2f;
-        float dx = (float) Math.sin(angle) * t;
-        float dy = (float) -Math.cos(angle) * t;
+        // Outer glow
+        g2.setColor(glowColor);
+        g2.setStroke(new BasicStroke(thickness * 1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(new java.awt.geom.Line2D.Float(x1, y1, x2, y2));
 
-        // 4개의 꼭짓점(직사각형)
-        int[] px = {
-                (int) (x1 - dx), (int) (x1 + dx),
-                (int) (x2 + dx), (int) (x2 -dx)
-        };
-        int[] py = {
-                (int) (y1 - dy), (int) (y1 + dy),
-                (int) (y2 + dy), (int) (y2 -dy)
-        };
+        // Inner bright core
+        g2.setColor(coreColor);
+        g2.setStroke(new BasicStroke(thickness * 0.7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(new java.awt.geom.Line2D.Float(x1, y1, x2, y2));
 
-        g2.fillPolygon(px, py, 4);
+        // simple glow ring at origin
+        g2.setStroke(new BasicStroke(2.5f));
+        g2.setColor(new Color(1f, 0.95f, 0.8f, Math.min(1f, alpha * 0.8f)));
+        float ringR = thickness * 1.2f;
+        g2.drawOval((int) (x1 - ringR), (int) (y1 - ringR), (int) (ringR * 2), (int) (ringR * 2));
+
+        // Restore state
+        g2.setStroke(oldStroke);
+        if (oldAA != null) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+        }
+    }
+    /**
+     * Draw a custom “laser satellite” boss without using the sprite sheet.
+     */
+    public void drawLaserBoss(FinalBoss_3 boss) {
+        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+        Stroke oldStroke = g2.getStroke();
+        Object oldAA = enableAntialiasing(g2);
+
+        int cx = boss.getPositionX() + boss.getWidth() / 2;
+        int cy = boss.getPositionY() + boss.getHeight() / 2;
+
+        int bodyW = boss.getWidth() - 14;
+        int bodyH = boss.getHeight() - 8;
+        int rx = bodyW / 2;
+        int ry = bodyH / 2;
+
+        drawBossBody(g2, cx, cy, bodyW, bodyH, rx, ry);
+        drawBossCore(g2, boss, cx, cy, bodyW, bodyH);
+        drawBossLenses(g2, boss, cx, cy, rx, ry);
+
+        restoreGraphicsState(g2, oldStroke, oldAA);
+    }
+
+    private Object enableAntialiasing(Graphics2D g2) {
+        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        return oldAA;
+    }
+
+    private void restoreGraphicsState(Graphics2D g2, Stroke oldStroke, Object oldAA) {
+        g2.setStroke(oldStroke);
+        if (oldAA != null) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+        }
+    }
+
+    private void drawBossBody(Graphics2D g2, int cx, int cy, int bodyW, int bodyH, int rx, int ry) {
+        g2.setColor(new Color(28, 30, 40));
+        g2.fillOval(cx - rx, cy - ry, bodyW, bodyH);
+
+        g2.setColor(new Color(80, 90, 110));
+        g2.setStroke(new BasicStroke(3f));
+        g2.drawOval(cx - rx, cy - ry, bodyW, bodyH);
+
+        drawInnerPulseRing(g2, cx, cy, bodyW, bodyH);
+    }
+
+    private void drawInnerPulseRing(Graphics2D g2, int cx, int cy, int bodyW, int bodyH) {
+        float pulse = (float) ((Math.sin(System.currentTimeMillis() / 220.0) + 1.0) / 2.0);
+        int innerW = (int) (bodyW * 0.62f + pulse * 3f);
+        int innerH = (int) (bodyH * 0.62f + pulse * 3f);
+        g2.setColor(new Color(60, 150, 220, 180));
+        g2.setStroke(new BasicStroke(2f));
+        g2.drawOval(cx - innerW / 2, cy - innerH / 2, innerW, innerH);
+    }
+
+    private void drawBossCore(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int bodyW, int bodyH) {
+        Color coreColor = boss.isBossWaveActive() ? new Color(120, 220, 255) : new Color(90, 200, 240);
+        int coreR = (int) (Math.min(bodyW, bodyH) * 0.18f);
+        g2.setColor(coreColor);
+        g2.fillOval(cx - coreR, cy - coreR, coreR * 2, coreR * 2);
+    }
+
+    private void drawBossLenses(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int rx, int ry) {
+        float[] lensAnglesDeg = {0f, 90f, 180f, 270f};
+        float lensRadius = Math.min(rx, ry) * 0.78f;
+        int lensSize = 12;
+        int lensHighlightSize = 16;
+
+        boolean[] highlightLens = buildLensHighlights(boss, lensAnglesDeg);
+        boolean forceHighlight = boss.isBossWaveActive();
+
+        for (int i = 0; i < lensAnglesDeg.length; i++) {
+            boolean on = forceHighlight || highlightLens[i];
+            drawSingleLens(g2, cx, cy, lensAnglesDeg[i], on, lensRadius, lensSize, lensHighlightSize);
+        }
+    }
+
+    private boolean[] buildLensHighlights(FinalBoss_3 boss, float[] lensAnglesDeg) {
+        boolean[] highlightLens = new boolean[lensAnglesDeg.length];
+        if (!boss.isLaserWarningActive()) {
+            return highlightLens;
+        }
+
+        for (float warn : boss.getPendingWarningAngles()) {
+            markNearbyLens(warn, lensAnglesDeg, highlightLens);
+        }
+        return highlightLens;
+    }
+
+    private void markNearbyLens(float warn, float[] lensAnglesDeg, boolean[] highlightLens) {
+        for (int i = 0; i < lensAnglesDeg.length; i++) {
+            if (isAngleWithinThreshold(warn, lensAnglesDeg[i], 30f)) {
+                highlightLens[i] = true;
+            }
+        }
+    }
+
+    private boolean isAngleWithinThreshold(float angle, float target, float threshold) {
+        float normalized = ((angle % 360) + 360) % 360;
+        float diff = Math.abs(normalized - target);
+        diff = Math.min(diff, 360 - diff);
+        return diff <= threshold;
+    }
+
+    private void drawSingleLens(Graphics2D g2, int cx, int cy, float angleDeg, boolean highlight, float lensRadius, int lensSize, int lensHighlightSize) {
+        double rad = Math.toRadians(angleDeg);
+        int lx = (int) (cx + Math.cos(rad) * lensRadius);
+        int ly = (int) (cy + Math.sin(rad) * lensRadius);
+
+        Color lensCore = highlight ? new Color(140, 240, 255) : new Color(70, 150, 210);
+        Color lensRing = highlight ? new Color(110, 200, 255) : new Color(60, 110, 160);
+
+        int size = highlight ? lensHighlightSize : lensSize;
+        g2.setColor(lensRing);
+        g2.fillOval(lx - size / 2, ly - size / 2, size, size);
+
+        g2.setColor(lensCore);
+        g2.fillOval(lx - (size - 6) / 2, ly - (size - 6) / 2, size - 6, size - 6);
     }
     public void drawLaserWarningLine(float originX, float originY, float angle) {
+        drawLaserWarningLine(originX, originY, angle, new Color(0, 255, 255, 180));
+    }
+    public void drawLaserWarningLine(float originX, float originY, float angle, Color color) {
         Graphics2D g2 = (Graphics2D) backBufferGraphics;
-
 
         float[] dashPattern = {6f, 6f};
         g2.setStroke(new BasicStroke(
@@ -888,7 +1062,7 @@ public final class DrawManager {
                 0f
         ));
 
-        g2.setColor(new Color(0, 255, 255, 180));
+        g2.setColor(color);
         float length = 2000f;
         float rad = (float) Math.toRadians(angle);
 
