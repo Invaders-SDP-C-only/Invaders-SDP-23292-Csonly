@@ -3,8 +3,8 @@ package screen;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.List;
+import java.util.Set;
 
 import audio.SoundManager;
 import engine.*;
@@ -12,6 +12,7 @@ import engine.Room;
 import engine.Room.RoomType;
 import engine.Room.Direction;
 import engine.Room.Door;
+import engine.level.ItemDrop;
 import engine.level.Level;
 import engine.level.LevelManager;
 import entity.*;
@@ -25,7 +26,6 @@ public class SandboxScreen extends Screen {
     private Room[][] map;
     private int currentRoomRow;
     private int currentRoomCol;
-
     private Set<String> clearedBossRooms;
 
     private Ship ship;
@@ -47,13 +47,18 @@ public class SandboxScreen extends Screen {
     private Cooldown inputDelay;
     private GameTimer gameTimer;
     private boolean isGameOver = false;
+
+    // 일시정지 관련
+    private boolean isPaused = false;
+    private int pauseSelection = 0;
+    private Cooldown selectionCooldown;
+
     private Cooldown parrySparkCooldown;
     private Entity parrySparkEffect, parrySparkEffect2;
     private static LevelManager levelManager;
 
     public static int getItemsSeparationLineHeight() { return ITEMS_SEPARATION_LINE_HEIGHT; }
 
-    // [수정] 생성자 파라미터에 savedClearedBossRooms 추가
     public SandboxScreen(final GameState gameState, final int width, final int height, final int fps, Set<String> savedClearedBossRooms) {
         super(width, height, fps);
         levelManager = new LevelManager();
@@ -61,8 +66,10 @@ public class SandboxScreen extends Screen {
         this.livesP2 = gameState.getLivesRemainingP2();
         this.score = gameState.getScore();
         this.coin = gameState.getCoin();
-        // 저장된 보스 목록이 있으면 불러오고, 없으면 새로 생성
         this.clearedBossRooms = (savedClearedBossRooms != null) ? savedClearedBossRooms : new HashSet<>();
+
+        this.selectionCooldown = Core.getCooldown(200);
+        this.selectionCooldown.reset();
     }
 
     @Override
@@ -121,11 +128,7 @@ public class SandboxScreen extends Screen {
                     }
                 }
                 map[row][col] = new Room(row, col, type, formation, levelNum);
-
-                // [중요] 이미 깬 보스는 클리어 처리 (부활 방지)
-                if (type == RoomType.BOSS && clearedBossRooms.contains(row + "," + col)) {
-                    map[row][col].setCleared(true);
-                }
+                if (type == RoomType.BOSS && clearedBossRooms.contains(row + "," + col)) map[row][col].setCleared(true);
                 if (type == RoomType.START) map[row][col].addBonfire(width, height);
             }
         }
@@ -150,6 +153,19 @@ public class SandboxScreen extends Screen {
     protected void update() {
         super.update();
         if (!this.inputDelay.checkFinished() || isGameOver) return;
+
+        // [추가] 일시정지 토글
+        if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE) && this.selectionCooldown.checkFinished()) {
+            this.isPaused = !this.isPaused;
+            this.selectionCooldown.reset();
+        }
+
+        if (this.isPaused) {
+            draw();
+            managePauseInput();
+            return;
+        }
+
         if (!this.gameTimer.isRunning()) this.gameTimer.start();
 
         manageInput();
@@ -181,6 +197,27 @@ public class SandboxScreen extends Screen {
         draw();
     }
 
+    private void managePauseInput() {
+        if (this.selectionCooldown.checkFinished()) {
+            if (inputManager.isKeyDown(KeyEvent.VK_UP) || inputManager.isKeyDown(KeyEvent.VK_W)) {
+                pauseSelection--;
+                if (pauseSelection < 0) pauseSelection = 2;
+                this.selectionCooldown.reset();
+            }
+            if (inputManager.isKeyDown(KeyEvent.VK_DOWN) || inputManager.isKeyDown(KeyEvent.VK_S)) {
+                pauseSelection++;
+                if (pauseSelection > 2) pauseSelection = 0;
+                this.selectionCooldown.reset();
+            }
+            if (inputManager.isKeyDown(KeyEvent.VK_SPACE) || inputManager.isKeyDown(KeyEvent.VK_ENTER)) {
+                this.selectionCooldown.reset();
+                if (pauseSelection == 0) this.isPaused = false;
+                else if (pauseSelection == 1) { this.returnCode = 7; this.isRunning = false; } // Restart
+                else if (pauseSelection == 2) { this.returnCode = 1; this.isRunning = false; } // Exit
+            }
+        }
+    }
+
     private void updateCurrentBoss() {
         if (currentBoss instanceof FinalBoss) {
             FinalBoss fb = (FinalBoss) currentBoss;
@@ -197,6 +234,15 @@ public class SandboxScreen extends Screen {
             FinalBoss_3 fb3 = (FinalBoss_3) currentBoss;
             fb3.update();
             bossBullets.addAll(fb3.shoot());
+        } else if (currentBoss instanceof Boss4) {
+            // [추가] Boss4 업데이트 로직
+            Boss4 b4 = (Boss4) currentBoss;
+            b4.update();
+            if (b4.isSpellCardActive()) {
+                bossBullets.addAll(b4.shootSpellCard(ship));
+            } else {
+                bossBullets.addAll(b4.shootNormal());
+            }
         }
     }
 
@@ -256,17 +302,14 @@ public class SandboxScreen extends Screen {
 
         ship.activateInvincibility(2000);
         if (shipP2 != null) shipP2.activateInvincibility(2000);
-
-        // 사무라이 모드 일단 해제
         ship.setMeleeMode(false);
         if(shipP2!=null) shipP2.setMeleeMode(false);
 
         Room room = getCurrentRoom();
         SoundManager.stopAll();
 
-        // [수정] 사무라이 보스 방이면 칼 모션 켜기
         int center = 2;
-        boolean isSamuraiRoom = (currentRoomRow == center && currentRoomCol == MAP_SIZE - 1); // 동쪽 방
+        boolean isSamuraiRoom = (currentRoomRow == center && currentRoomCol == MAP_SIZE - 1);
         if (isSamuraiRoom) {
             ship.setMeleeMode(true);
             if (shipP2 != null) shipP2.setMeleeMode(true);
@@ -292,13 +335,11 @@ public class SandboxScreen extends Screen {
             this.samuraiBoss = new SamuraiBoss(width/2, 100, width, ship, shipP2, ITEMS_SEPARATION_LINE_HEIGHT);
             this.samuraiBoss.attach(this);
             this.currentBoss = this.samuraiBoss;
-            // 여기서도 확실하게 켜줌
             ship.setMeleeMode(true);
             if(shipP2 != null) shipP2.setMeleeMode(true);
         } else if (r == center && c == 0) {
-            OmegaBoss oBoss = new OmegaBoss(Color.MAGENTA, ITEMS_SEPARATION_LINE_HEIGHT);
-            oBoss.attach(this);
-            this.currentBoss = oBoss;
+            // [수정] 서쪽 방: Boss4 교체 (생성자는 width/height를 받음)
+            this.currentBoss = new Boss4(width/2 - 30, 50, width, height);
         } else if (r == MAP_SIZE-1 && c == center) {
             this.currentBoss = new FinalBoss_3(width/2 - 50, 50, width, height, this.laserBeamManager);
         }
@@ -335,7 +376,7 @@ public class SandboxScreen extends Screen {
         }
         checkBodyCollisions(room);
         for (SwordWave w : swordWaves) {
-           // if (checkPlayerCollision(w)) recyclable.add(w);
+            // if (checkPlayerCollision(w)) recyclable.add(w);
         }
         this.bullets.removeAll(recyclable);
         this.swordWaves.removeAll(recyclable);
@@ -388,8 +429,7 @@ public class SandboxScreen extends Screen {
                 if (!e.isDestroyed() && checkCollision(b, e)) {
                     room.getEnemyFormation().destroy(e);
                     this.score += e.getPointValue();
-                    this.coin += e.getPointValue() / 3;
-                    // [수정] 아이템 드랍 호출
+                    this.coin += e.getPointValue() / 10;
                     spawnItem(e, room.getLevelNumber());
                     return true;
                 }
@@ -404,7 +444,10 @@ public class SandboxScreen extends Screen {
                 if (checkCollision(b, currentBoss)) { ((OmegaBoss)currentBoss).takeDamage(1); hit = true; }
             } else if (currentBoss instanceof FinalBoss_3 && !((FinalBoss_3)currentBoss).isDestroyed()) {
                 if (checkCollision(b, currentBoss)) { ((FinalBoss_3)currentBoss).takeDamage(1); hit = true; }
+            } else if (currentBoss instanceof Boss4 && !((Boss4)currentBoss).isDestroyed()) {
+                if (checkCollision(b, currentBoss)) { ((Boss4)currentBoss).takeDamage(1); hit = true; }
             }
+
             if (hit) {
                 if (isBossDead(currentBoss)) handleBossDeath(room);
                 return true;
@@ -414,10 +457,9 @@ public class SandboxScreen extends Screen {
     }
 
     private void spawnItem(EnemyShip enemy, int levelNum) {
-        // [수정] Core.getFileManager를 통해 레벨을 직접 로드하여 확실하게 처리
         Level lvl = levelManager.getLevel(levelNum);
         if (lvl == null || lvl.getItemDrops() == null) return;
-        List<engine.level.ItemDrop> drops = lvl.getItemDrops();
+        List<ItemDrop> drops = lvl.getItemDrops();
         for (engine.level.ItemDrop drop : drops) {
             if (drop.getEnemyType().equals(enemy.getEnemyType()) && Math.random() < drop.getDropChance()) {
                 DropItem.ItemType type = DropItem.fromString(drop.getItemId());
@@ -433,6 +475,7 @@ public class SandboxScreen extends Screen {
         if (boss instanceof FinalBoss) return ((FinalBoss)boss).getHealPoint() <= 0;
         if (boss instanceof OmegaBoss) return ((OmegaBoss)boss).isDestroyed();
         if (boss instanceof FinalBoss_3) return ((FinalBoss_3)boss).isDestroyed();
+        if (boss instanceof Boss4) return ((Boss4)boss).isDestroyed();
         return false;
     }
 
@@ -553,7 +596,7 @@ public class SandboxScreen extends Screen {
 
     private Room getCurrentRoom() { return map[currentRoomRow][currentRoomCol]; }
 
-    public Set<String> getClearedBossRooms() { return this.clearedBossRooms; } // [추가] Getter
+    public Set<String> getClearedBossRooms() { return this.clearedBossRooms; }
 
     public GameState getGameState() {
         return new GameState(1, score, livesP1, livesP2, 0, 0, coin);
@@ -563,21 +606,9 @@ public class SandboxScreen extends Screen {
         drawManager.initDrawing(this);
         Room room = getCurrentRoom();
         room.draw(drawManager);
-        if (this.ship != null && this.livesP1 > 0) {
-            drawManager.drawEntity(ship, ship.getPositionX(), ship.getPositionY());
-            if (this.ship.isParrying()) {
-                Entity slash = this.ship.getSwordSlashEffect();
-                drawManager.drawEntity(slash, slash.getPositionX(), slash.getPositionY());
-            }
-        }
-        if (this.shipP2 != null && this.livesP2 > 0) {
-            drawManager.drawEntity(shipP2, shipP2.getPositionX(), shipP2.getPositionY());
 
-            if (this.shipP2.isParrying()) {
-                Entity slash = this.shipP2.getSwordSlashEffect();
-                drawManager.drawEntity(slash, slash.getPositionX(), slash.getPositionY());
-            }
-        }
+        drawManager.drawEntity(ship, ship.getPositionX(), ship.getPositionY());
+        if (shipP2 != null) drawManager.drawEntity(shipP2, shipP2.getPositionX(), shipP2.getPositionY());
 
         for (Bullet b : this.bullets) drawManager.drawEntity(b, b.getPositionX(), b.getPositionY());
         for (BossBullet bb : this.bossBullets) drawManager.drawEntity(bb, bb.getPositionX(), bb.getPositionY());
@@ -589,7 +620,13 @@ public class SandboxScreen extends Screen {
         }
 
         if (this.currentBoss != null && room.getType() == RoomType.BOSS && !room.isCleared()) {
-            drawManager.drawEntity(this.currentBoss, this.currentBoss.getPositionX(), this.currentBoss.getPositionY());
+            if (currentBoss instanceof Boss4) {
+                // Boss4는 drawManager가 아니라 직접 Graphics를 사용하므로 우회 호출
+                drawManager.drawBoss4((Boss4)currentBoss);
+            } else {
+                drawManager.drawEntity(this.currentBoss, this.currentBoss.getPositionX(), this.currentBoss.getPositionY());
+            }
+
             if (currentBoss instanceof SamuraiBoss) {
                 SamuraiBoss sBoss = (SamuraiBoss) currentBoss;
                 drawManager.drawBossHealthBar(this, sBoss.getHealPoint(), sBoss.getMaxHealth());
@@ -616,6 +653,11 @@ public class SandboxScreen extends Screen {
         drawManager.drawItemsHUD(this);
         drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
         drawManager.drawHorizontalLine(this, ITEMS_SEPARATION_LINE_HEIGHT);
+
+        // [추가] 일시정지 메뉴 그리기
+        if (isPaused) {
+            drawManager.drawPauseMenu(this, pauseSelection);
+        }
 
         drawManager.completeDrawing(this);
     }
