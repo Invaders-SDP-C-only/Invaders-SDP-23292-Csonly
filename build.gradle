@@ -17,8 +17,9 @@ repositories {
 }
 
 dependencies {
-    // Add any dependencies here, e.g.,
-    // implementation 'com.google.guava:guava:31.0.1-jre'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.14.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
 }
 
 application {
@@ -48,4 +49,14 @@ jar {
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs = [
+        '-XX:+EnableDynamicAgentLoading',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
+        '--add-opens=java.base/java.io=ALL-UNNAMED'
+    ]
 }
