@@ -931,9 +931,8 @@ public final class DrawManager {
      */
     public void drawLaserBoss(FinalBoss_3 boss) {
         Graphics2D g2 = (Graphics2D) backBufferGraphics;
-        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
         Stroke oldStroke = g2.getStroke();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Object oldAA = enableAntialiasing(g2);
 
         int cx = boss.getPositionX() + boss.getWidth() / 2;
         int cy = boss.getPositionY() + boss.getHeight() / 2;
@@ -943,70 +942,109 @@ public final class DrawManager {
         int rx = bodyW / 2;
         int ry = bodyH / 2;
 
-        // Base body
+        drawBossBody(g2, cx, cy, bodyW, bodyH, rx, ry);
+        drawBossCore(g2, boss, cx, cy, bodyW, bodyH);
+        drawBossLenses(g2, boss, cx, cy, rx, ry);
+
+        restoreGraphicsState(g2, oldStroke, oldAA);
+    }
+
+    private Object enableAntialiasing(Graphics2D g2) {
+        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        return oldAA;
+    }
+
+    private void restoreGraphicsState(Graphics2D g2, Stroke oldStroke, Object oldAA) {
+        g2.setStroke(oldStroke);
+        if (oldAA != null) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+        }
+    }
+
+    private void drawBossBody(Graphics2D g2, int cx, int cy, int bodyW, int bodyH, int rx, int ry) {
         g2.setColor(new Color(28, 30, 40));
         g2.fillOval(cx - rx, cy - ry, bodyW, bodyH);
 
-        // Outer ring
         g2.setColor(new Color(80, 90, 110));
         g2.setStroke(new BasicStroke(3f));
         g2.drawOval(cx - rx, cy - ry, bodyW, bodyH);
 
-        // Inner ring (pulse)
+        drawInnerPulseRing(g2, cx, cy, bodyW, bodyH);
+    }
+
+    private void drawInnerPulseRing(Graphics2D g2, int cx, int cy, int bodyW, int bodyH) {
         float pulse = (float) ((Math.sin(System.currentTimeMillis() / 220.0) + 1.0) / 2.0);
         int innerW = (int) (bodyW * 0.62f + pulse * 3f);
         int innerH = (int) (bodyH * 0.62f + pulse * 3f);
         g2.setColor(new Color(60, 150, 220, 180));
         g2.setStroke(new BasicStroke(2f));
         g2.drawOval(cx - innerW / 2, cy - innerH / 2, innerW, innerH);
+    }
 
-        // Core
+    private void drawBossCore(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int bodyW, int bodyH) {
         Color coreColor = boss.isBossWaveActive() ? new Color(120, 220, 255) : new Color(90, 200, 240);
         int coreR = (int) (Math.min(bodyW, bodyH) * 0.18f);
         g2.setColor(coreColor);
         g2.fillOval(cx - coreR, cy - coreR, coreR * 2, coreR * 2);
+    }
 
-        // Lenses
+    private void drawBossLenses(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int rx, int ry) {
         float[] lensAnglesDeg = {0f, 90f, 180f, 270f};
         float lensRadius = Math.min(rx, ry) * 0.78f;
         int lensSize = 12;
         int lensHighlightSize = 16;
 
-        boolean[] highlightLens = new boolean[lensAnglesDeg.length];
-        if (boss.isLaserWarningActive()) {
-            for (float warn : boss.getPendingWarningAngles()) {
-                for (int i = 0; i < lensAnglesDeg.length; i++) {
-                    float diff = Math.abs(((warn % 360) + 360) % 360 - lensAnglesDeg[i]);
-                    diff = Math.min(diff, 360 - diff);
-                    if (diff <= 30f) {
-                        highlightLens[i] = true;
-                    }
-                }
-            }
-        }
+        boolean[] highlightLens = buildLensHighlights(boss, lensAnglesDeg);
         boolean forceHighlight = boss.isBossWaveActive();
 
         for (int i = 0; i < lensAnglesDeg.length; i++) {
-            double rad = Math.toRadians(lensAnglesDeg[i]);
-            int lx = (int) (cx + Math.cos(rad) * lensRadius);
-            int ly = (int) (cy + Math.sin(rad) * lensRadius);
-
             boolean on = forceHighlight || highlightLens[i];
-            Color lensCore = on ? new Color(140, 240, 255) : new Color(70, 150, 210);
-            Color lensRing = on ? new Color(110, 200, 255) : new Color(60, 110, 160);
+            drawSingleLens(g2, cx, cy, lensAnglesDeg[i], on, lensRadius, lensSize, lensHighlightSize);
+        }
+    }
 
-            int size = on ? lensHighlightSize : lensSize;
-            g2.setColor(lensRing);
-            g2.fillOval(lx - size / 2, ly - size / 2, size, size);
-
-            g2.setColor(lensCore);
-            g2.fillOval(lx - (size - 6) / 2, ly - (size - 6) / 2, size - 6, size - 6);
+    private boolean[] buildLensHighlights(FinalBoss_3 boss, float[] lensAnglesDeg) {
+        boolean[] highlightLens = new boolean[lensAnglesDeg.length];
+        if (!boss.isLaserWarningActive()) {
+            return highlightLens;
         }
 
-        g2.setStroke(oldStroke);
-        if (oldAA != null) {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+        for (float warn : boss.getPendingWarningAngles()) {
+            markNearbyLens(warn, lensAnglesDeg, highlightLens);
         }
+        return highlightLens;
+    }
+
+    private void markNearbyLens(float warn, float[] lensAnglesDeg, boolean[] highlightLens) {
+        for (int i = 0; i < lensAnglesDeg.length; i++) {
+            if (isAngleWithinThreshold(warn, lensAnglesDeg[i], 30f)) {
+                highlightLens[i] = true;
+            }
+        }
+    }
+
+    private boolean isAngleWithinThreshold(float angle, float target, float threshold) {
+        float normalized = ((angle % 360) + 360) % 360;
+        float diff = Math.abs(normalized - target);
+        diff = Math.min(diff, 360 - diff);
+        return diff <= threshold;
+    }
+
+    private void drawSingleLens(Graphics2D g2, int cx, int cy, float angleDeg, boolean highlight, float lensRadius, int lensSize, int lensHighlightSize) {
+        double rad = Math.toRadians(angleDeg);
+        int lx = (int) (cx + Math.cos(rad) * lensRadius);
+        int ly = (int) (cy + Math.sin(rad) * lensRadius);
+
+        Color lensCore = highlight ? new Color(140, 240, 255) : new Color(70, 150, 210);
+        Color lensRing = highlight ? new Color(110, 200, 255) : new Color(60, 110, 160);
+
+        int size = highlight ? lensHighlightSize : lensSize;
+        g2.setColor(lensRing);
+        g2.fillOval(lx - size / 2, ly - size / 2, size, size);
+
+        g2.setColor(lensCore);
+        g2.fillOval(lx - (size - 6) / 2, ly - (size - 6) / 2, size - 6, size - 6);
     }
     public void drawLaserWarningLine(float originX, float originY, float angle) {
         drawLaserWarningLine(originX, originY, angle, new Color(0, 255, 255, 180));
