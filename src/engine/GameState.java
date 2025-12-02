@@ -115,4 +115,7 @@ public class GameState {
 			this.coin = amount;
 		}
 	}
+	public final void setLevel(final int level){
+		this.level = level;
+	}
 }

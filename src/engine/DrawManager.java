@@ -188,11 +188,19 @@ public final class DrawManager {
 			return;
 		}
 
+	  if (type == null) {
+		  backBufferGraphics.setColor(entity.getColor());
+		  backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
+		  return;
+	  }
+
 		backBufferGraphics.setColor(entity.getColor());
 		for (int i = 0; i < image.length; i++)
 			for (int j = 0; j < image[i].length; j++)
 				if (image[i][j])
 					backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
+
+
 	}
 
 	/**
@@ -892,4 +900,54 @@ public final class DrawManager {
         // Stroke 초기화
         g2.setStroke(new BasicStroke(1f));
     }
+	/**
+	 * Draws a simple colored rectangle (useful for UI, Minimap).
+	 */
+	public void drawRectangle(final int x, final int y, final int width, final int height, final Color color) {
+		backBufferGraphics.setColor(color);
+		backBufferGraphics.fillRect(x, y, width, height);
+		// 테두리를 그리고 싶다면 아래 주석 해제
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.drawRect(x, y, width, height);
+	}
+
+	public void drawGameModeSelection(final screen.Screen screen, final int selection) {
+		backBufferGraphics.setColor(Color.GREEN);
+		drawCenteredBigString(screen, "SELECT  GAME  MODE", 160);
+
+		float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
+		Color pulseColor = new Color(0, 0.5f + pulse * 0.5f, 0);
+
+		if (selection == 0) backBufferGraphics.setColor(pulseColor);
+		else backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, " CLASSIC MODE ", 230);
+
+		if (selection == 1) backBufferGraphics.setColor(pulseColor);
+		else backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, " SANDBOX MODE ", 270);
+
+		if (selection == 2) backBufferGraphics.setColor(pulseColor);
+		else backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, "< BACK TO MAIN MENU >", 310);
+
+		int y1 = 230;
+		int y2 = 270;
+		int mid1 = y1 - fontRegularMetrics.getAscent() / 2;
+		int mid2 = y2 - fontRegularMetrics.getAscent() / 2;
+
+
+		int centerX = screen.getWidth() / 2;
+		int textW1 = fontRegularMetrics.stringWidth(" 1 PLAYER ");
+		int textW2 = fontRegularMetrics.stringWidth(" 2 PLAYER ");
+		int gap = 10;
+		int shipGap = 12;
+
+		int textLeft1 = centerX - textW1 / 2;
+
+		int textLeft2 = centerX - textW2 / 2;
+
+		backBufferGraphics.setColor(Color.GRAY);
+		drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+	}
+
 }

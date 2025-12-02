@@ -24,7 +24,8 @@ public class SamuraiBoss extends Entity implements BossEntity{
     private Logger logger;
     private Ship player1;
     private Ship player2;
-    private GameScreen screen;
+    private Screen screen;
+
 
     /** Boss status hard coding */
     private int health = 100;
@@ -93,7 +94,7 @@ public class SamuraiBoss extends Entity implements BossEntity{
      * @param newScreen Screen to attach.
      */
     public final void attach(final Screen newScreen) {
-        this.screen = (GameScreen) newScreen;
+        this.screen = newScreen;
     }
 
     @Override
@@ -290,8 +291,10 @@ public class SamuraiBoss extends Entity implements BossEntity{
         if (this.screen == null) return null;
 
         // Get actual lives.
-        boolean p1Alive = (this.player1 != null && this.screen.getLivesP1() > 0 && !this.player1.isDestroyed());
-        boolean p2Alive = (this.player2 != null && this.screen.getLivesP2() > 0 && !this.player2.isDestroyed());
+        boolean p1Alive = (this.player1 != null && !this.player1.isDestroyed());
+        // GameScreen/SandboxScreen 의존성을 없애기 위해 screen에서 lives를 직접 확인하는 대신 ship 상태만 봄
+        // 만약 lives 확인이 꼭 필요하다면 instanceof로 체크해야 함
+        boolean p2Alive = (this.player2 != null && !this.player2.isDestroyed());
 
         // 2p mode
         if (!p1Alive && !p2Alive) return null;
@@ -323,7 +326,7 @@ public class SamuraiBoss extends Entity implements BossEntity{
             SoundManager.play("sfx/parry.wav");
             logger.info("Boss Parried!");
             // Posture increase through parry
-            takePostureDamage(80);
+            takePostureDamage(50);
             this.currentState = BossState.STUN;
             this.stunCooldown.reset();
         }

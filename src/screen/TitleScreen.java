@@ -291,6 +291,13 @@ public class TitleScreen extends Screen {
 				this.targetAngle -= 90;
 				this.selectionCooldown.reset();
 			}
+			/** test code for sandbox-mode */
+			if (inputManager.isKeyDown(java.awt.event.KeyEvent.VK_Z)) {
+				this.returnCode = 9;
+				this.isRunning = false;
+				this.selectionCooldown.reset();
+			}
+			/** test code ends */
 		}
 	}
 
