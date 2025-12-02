@@ -10,7 +10,7 @@ class GameStateTest {
 
     @BeforeEach
     void setUp() {
-        gameState = new GameState(1, 100, 3, 3, 50, 10, 200, 2);
+        gameState = new GameState(1, 100, 3, 3, 50, 10, 200);
     }
 
     @Test
@@ -22,7 +22,6 @@ class GameStateTest {
         assertEquals(50, gameState.getBulletsShot());
         assertEquals(10, gameState.getShipsDestroyed());
         assertEquals(200, gameState.getCoin());
-        assertEquals(2, gameState.getPlayerCount());
     }
 
     @Test
