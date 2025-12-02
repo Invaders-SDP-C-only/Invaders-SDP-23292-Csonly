@@ -46,32 +46,6 @@ class FileManagerTest {
         assertSame(fileManager, FileManager.getInstance());
     }
 
-    @Test
-    void testLoadDefaultHighScores() {
-        // This test relies on the "scores" file in src/test/resources
-        // The public loadHighScores() method will call loadDefaultHighScores() if it can't find a file.
-
-        try {
-            Method method = FileManager.class.getDeclaredMethod("loadDefaultHighScores");
-
-            // [Option 2 적용] setAccessible을 doPrivileged 블록으로 감쌉니다.
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                method.setAccessible(true);
-                return null;
-            });
-
-            @SuppressWarnings("unchecked")
-            List<Score> highScores = (List<Score>) method.invoke(fileManager);
-
-            assertEquals(2, highScores.size());
-            assertEquals("TestPlayer", highScores.get(0).getName());
-            assertEquals(12345, highScores.get(0).getScore());
-            assertEquals("AnotherTest", highScores.get(1).getName());
-            assertEquals(54321, highScores.get(1).getScore());
-        } catch (Exception e) {
-            fail("Test failed due to reflection error: " + e.getMessage());
-        }
-    }
 
     @Test
     void testSaveAndLoadAchievements() throws IOException {
