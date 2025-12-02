@@ -2,7 +2,6 @@ package entity;
 
 import audio.SoundManager;
 import engine.*;
-import screen.GameScreen;
 
 import java.awt.Color;
 import java.util.*;
@@ -34,6 +33,37 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
     private List<Float> pendingWarningAngles = new ArrayList<>();
 
+    // Boss wave (spin laser) state
+    private boolean bossWaveTransition = false;
+    private boolean bossWaveActive = false;
+    private boolean wave20Triggered = false;
+    private boolean wave5Triggered = false;
+    private long bossWaveStartTime = 0;
+    private float bossWaveAngularSpeedDegPhase1 = -22f; // 시계 방향(음수)
+    private float bossWaveAngularSpeedDegPhase2 = -26f; // 2번째 웨이브에서 조금 더 빠르게
+    private float bossWaveAngularSpeedDeg = -22f;
+    private float bossWaveAngleDeg = 0f;
+    private float bossWaveRotationAccum = 0f;
+    private int bossWaveDirection = -1;
+    private boolean bossWaveReverseDone = false;
+    private long bossWaveLastUpdateTime = 0;
+    private boolean bossWavePauseBeforeReverse = false;
+    private long bossWavePauseStart = 0;
+    private long bossWavePauseMs = 1800;
+    private boolean bossWavePreAlert = false;
+    private long bossWavePreAlertStart = 0;
+    private long bossWavePreAlertMs = 1500;
+    private int bossWaveTargetX;
+    private int bossWaveTargetY;
+    private Cooldown bossWaveFireCooldown;
+    private int bossWaveBeamDurationMs = 1800;
+    private long bossWaveTransitionStartTime = 0;
+    private long bossWaveMinWarningMs = 2000;
+    private int bossWaveCount = 0;
+    private boolean bossWaveWarningMode = false;
+    private long bossWaveWarningEndTime = 0;
+    private long bossWaveStartWarnMs = 1000;
+
     public float getWarningOriginX() {
         return this.positionX + this.width / 2f;
     }
@@ -49,7 +79,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         this.screenHeight = screenHeight;
 
         this.maxHP = 100;
-        this.healPoint = 100;
+        this.healPoint = this.maxHP;
 
         this.pointValue = 700;
         this.spriteType = DrawManager.SpriteType.FinalBoss1;
@@ -61,10 +91,40 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
         this.laserCooldown = Core.getCooldown(3000);
         this.laserCooldown.reset();
+
+        this.bossWaveFireCooldown = Core.getCooldown(200);
+        this.bossWaveFireCooldown.reset();
     }
 
     @Override
     public void update() {
+
+        if (bossWavePreAlert) {
+            if (System.currentTimeMillis() - bossWavePreAlertStart >= bossWavePreAlertMs) {
+                bossWavePreAlert = false;
+                bossWaveTransition = true;
+                bossWaveTransitionStartTime = System.currentTimeMillis();
+                // Moving to center: 더 이상 경고선을 표시하지 않는다.
+                laserWarningActive = false;
+                pendingWarningAngles.clear();
+            } else {
+                return;
+            }
+        }
+
+        if (bossWaveTransition) {
+            if (moveToCenter()) {
+                if (System.currentTimeMillis() - bossWaveTransitionStartTime >= bossWaveMinWarningMs) {
+                    beginBossWave();
+                }
+            }
+            return;
+        }
+
+        if (bossWaveActive) {
+            updateBossWave();
+            return;
+        }
 
         if (laserWarningActive) {
 
@@ -101,6 +161,161 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         laserWarningActive = true;
         laserWarningEndTime = System.currentTimeMillis() + warnMS;
     }
+
+    private boolean moveToCenter() {
+        int targetX = (screenWidth - width) / 2;
+        int targetY = (screenHeight - height) / 2 - 50; // slightly above center
+        bossWaveTargetX = targetX;
+        bossWaveTargetY = targetY;
+
+        int speed = 5; // slightly slower approach to center
+        if (positionX < targetX) positionX = Math.min(positionX + speed, targetX);
+        else if (positionX > targetX) positionX = Math.max(positionX - speed, targetX);
+
+        if (positionY < targetY) positionY = Math.min(positionY + speed, targetY);
+        else if (positionY > targetY) positionY = Math.max(positionY - speed, targetY);
+
+        return positionX == targetX && positionY == targetY;
+    }
+
+    private void beginBossWave() {
+        bossWaveCount++;
+        bossWaveAngularSpeedDeg = (bossWaveCount >= 2) ? bossWaveAngularSpeedDegPhase2 : bossWaveAngularSpeedDegPhase1;
+        bossWaveTransition = false;
+        bossWaveActive = true;
+        bossWaveStartTime = System.currentTimeMillis();
+        bossWaveFireCooldown.reset();
+        bossWaveAngleDeg = 0f;
+        bossWaveRotationAccum = 0f;
+        bossWaveDirection = -1;
+        bossWaveReverseDone = false;
+        bossWaveLastUpdateTime = System.currentTimeMillis();
+        // Show a short red warning before the rotation begins.
+        pendingWarningAngles.clear();
+        for (int i = 0; i < 8; i++) {
+            float angle = (360f / 8) * i;
+            pendingWarningAngles.add(angle);
+        }
+        bossWaveWarningMode = true;
+        laserWarningActive = true;
+        bossWaveWarningEndTime = System.currentTimeMillis() + bossWaveStartWarnMs;
+        isLaserFiring = false;
+    }
+
+    private void updateBossWave() {
+        long now = System.currentTimeMillis();
+        long deltaMs = now - bossWaveLastUpdateTime;
+        if (deltaMs < 0) deltaMs = 0;
+        bossWaveLastUpdateTime = now;
+        float deltaSec = deltaMs / 1000f;
+
+        // Keep warnings visible briefly before rotation starts.
+        if (bossWaveWarningMode) {
+            if (now < bossWaveWarningEndTime) {
+                return;
+            } else {
+                bossWaveWarningMode = false;
+                laserWarningActive = false;
+                pendingWarningAngles.clear();
+                bossWaveLastUpdateTime = now; // reset timing to avoid jump
+            }
+        }
+
+        if (bossWavePauseBeforeReverse) {
+            if (now - bossWavePauseStart >= bossWavePauseMs) {
+                bossWavePauseBeforeReverse = false;
+                bossWaveDirection *= -1;
+                bossWaveRotationAccum = 0f;
+            } else {
+                // Pause movement but keep beams alive
+                return;
+            }
+        }
+
+        bossWaveAngleDeg += bossWaveAngularSpeedDeg * bossWaveDirection * deltaSec;
+        bossWaveRotationAccum += Math.abs(bossWaveAngularSpeedDeg * deltaSec);
+
+        if (bossWaveRotationAccum >= 360f) {
+            if (!bossWaveReverseDone) {
+                bossWaveReverseDone = true;
+                bossWavePauseBeforeReverse = true;
+                bossWavePauseStart = now;
+                bossWaveRotationAccum = 0f;
+            } else {
+                bossWaveActive = false;
+                bossWaveWarningMode = false;
+                laserWarningActive = false;
+                pendingWarningAngles.clear();
+                return;
+            }
+        }
+
+        if (bossWaveFireCooldown.checkFinished()) {
+            bossWaveFireCooldown.reset();
+            fireRotatingLaser((float) Math.toRadians(bossWaveAngleDeg));
+        }
+    }
+
+    private void fireRotatingLaser(float baseAngleRad) {
+        // Wave 연출 시 잔상이 겹치지 않도록, 이전 세트를 지우고 현재 세트만 남긴다.
+        laserBeamManager.clear();
+        for (int i = 0; i < 8; i++) {
+            float angle = (float) (baseAngleRad + Math.toRadians(45 * i));
+            spawnLaser(angle, bossWaveBeamDurationMs);
+        }
+        // keep beam count bounded to avoid buildup
+        List<LaserBeam> beams = laserBeamManager.getBeams();
+        int maxBeams = 24;
+        if (beams.size() > maxBeams) {
+            int removeCount = beams.size() - maxBeams;
+            for (int i = 0; i < removeCount && !beams.isEmpty(); i++) {
+                beams.remove(0);
+            }
+        }
+    }
+
+    private void spawnLaser(float angleRad, long durationMs) {
+        float originX = positionX + width / 2f;
+        float originY = positionY + height;
+
+        LaserBeam beam = new LaserBeam(
+                originX, originY,
+                (float) Math.toDegrees(angleRad),
+                screenHeight,
+                12f,
+                durationMs
+        );
+
+        laserBeamManager.addBeam(beam);
+    }
+
+    private boolean shouldStartBossWave() {
+        if (bossWaveActive || bossWaveTransition) return false;
+
+        float hpPercent = (float) healPoint / maxHP;
+        if (!wave20Triggered && hpPercent <= 0.10f) {
+            wave20Triggered = true;
+            return true;
+        }
+        if (!wave5Triggered && hpPercent <= 0.05f) {
+            wave5Triggered = true;
+            return true;
+        }
+        return false;
+    }
+
+    private void startBossWaveTransitionIfNeeded() {
+        if (shouldStartBossWave()) {
+            bossWavePreAlert = true;
+            bossWavePreAlertStart = System.currentTimeMillis();
+            pendingWarningAngles.clear();
+            for (int i = 0; i < 8; i++) {
+                float angle = (360f / 8) * i;
+                startLaserWarning(angle, bossWaveMinWarningMs);
+            }
+        }
+    }
+
     private void movePattern() {
         if (!moveCooldown.checkFinished()) return;
         moveCooldown.reset();
@@ -164,6 +379,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         );
 
         laserBeamManager.addBeam(beam);
+        SoundManager.play("sfx/boss_laser.wav");
 
         isLaserFiring = true;
         laserEndtime = System.currentTimeMillis() + 800;
@@ -171,6 +387,10 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     public Set<BossBullet> shoot() {
 
         Set<BossBullet> bullets = new HashSet<>();
+
+        if (bossWaveActive || bossWaveTransition || bossWavePreAlert) {
+            return bullets;
+        }
         bullets.addAll(shoot3way());
 
         if (!laserWarningActive && !isLaserFiring && laserCooldown.checkFinished()) {
@@ -197,11 +417,12 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
     private void fireLaserPattern() {
 
+        bossWaveWarningMode = false;
         if (healPoint >= maxHP * 0.5f) {
-            pendingWarningAngles.clear();
-            startLaserWarning(90f, 600);
-            return;
-        }
+        pendingWarningAngles.clear();
+        startLaserWarning(90f, 600);
+        return;
+    }
 
         if (healPoint >= maxHP * 0.2f) {
             pendingWarningAngles.clear();
@@ -220,7 +441,11 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     }
     @Override
     public void takeDamage(int dmg) {
+        // 웨이브 준비(프리알럿/중앙 이동) 및 웨이브 진행 중에는 무적.
+        if (bossWavePreAlert || bossWaveTransition || bossWaveActive) return;
+
         healPoint -= dmg;
+        startBossWaveTransitionIfNeeded();
         if (healPoint <= 0) destroy();
     }
 
@@ -231,13 +456,14 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     }
 
     @Override public int getHealPoint() { return healPoint; }
+    public int getMaxHp() { return maxHP; }
     @Override public int getPointValue() { return pointValue; }
     @Override public boolean isDestroyed() { return destroyed; }
     @Override public void move(int dx, int dy) { positionX += dx; positionY += dy; }
 
     @Override
     public void draw(DrawManager drawManager) {
-        drawManager.drawEntity(this, positionX, positionY);
+        drawManager.drawLaserBoss(this);
     }
     public boolean isLaserWarningActive() {
         return laserWarningActive;
@@ -245,5 +471,14 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     public List<Float> getPendingWarningAngles() {
         return pendingWarningAngles;
     }
+
+    public boolean isBossWaveActiveOrTransition() {
+        return bossWaveActive || bossWaveTransition || bossWavePreAlert;
+    }
+
+    public boolean isBossWaveActive() {
+        return bossWaveActive;
+    }
+    public boolean isBossWaveWarningActive() { return bossWaveWarningMode && laserWarningActive; }
 
 }
