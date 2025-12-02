@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("java:S3011")
 class FileManagerTest {
 
     private FileManager fileManager;

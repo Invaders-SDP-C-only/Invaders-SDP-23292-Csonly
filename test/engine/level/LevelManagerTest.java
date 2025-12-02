@@ -36,6 +36,7 @@ class LevelManagerTest {
         assertTrue(numLevels > 0); 
     }
 
+    @SuppressWarnings("java:S3011")
     @Test
     void nullLevels_shouldReturnSafely() throws NoSuchFieldException, IllegalAccessException {
         LevelManager levelManager = new LevelManager();

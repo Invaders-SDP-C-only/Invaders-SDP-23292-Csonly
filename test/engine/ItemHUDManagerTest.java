@@ -13,6 +13,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("java:S3011")
 class ItemHUDManagerTest {
 
     private ItemHUDManager itemHUDManager;

@@ -26,6 +26,7 @@ class AchievementManagerTest {
 
     private AchievementManager achievementManager;
 
+    @SuppressWarnings("java:S3011")
     @BeforeEach
     void setUp() throws IOException {
         // Mock the static Core.getFileManager() to return our mock FileManager
