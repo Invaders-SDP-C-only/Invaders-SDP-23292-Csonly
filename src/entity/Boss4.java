@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 import javax.imageio.ImageIO;
-import java.util.Random;
+import java.security.SecureRandom;
 
 public class Boss4 extends Entity implements BossEntity{
 
@@ -61,7 +61,7 @@ public class Boss4 extends Entity implements BossEntity{
     private static final int SPELL_CARD_DURATION = 30000; // 30 seconds
     private boolean survivedLastSpellCard = false;
     private boolean hasUsedSpellCard = false;
-    private static final Random RANDOM = new Random();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
 
     // Non-spell fields
