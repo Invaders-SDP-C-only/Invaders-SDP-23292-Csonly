@@ -146,12 +146,18 @@ public final class Core {
                                 gameState.getShipsDestroyed(),
                                 gameState.getCoin()
                         );*/
-                        // Level music
-                        SoundManager.stopAll();
-                        SoundManager.playLoop("sfx/level" + gameState.getLevel() + ".wav");
-
                         // Load level
                         engine.level.Level currentLevel = levelManager.getLevel(gameState.getLevel());
+                        
+                        // Level music
+                        SoundManager.stopAll();
+                        if (currentLevel != null && currentLevel.getBgm() != null) {
+                            SoundManager.playLoop(currentLevel.getBgm());
+                        } else {
+                            // Fallback for old behavior or missing BGM
+                            SoundManager.playLoop("sfx/level" + gameState.getLevel() + ".wav");
+                        }
+
                         if (currentLevel == null) {
                             // If no more levels are defined, exit to score
                             looping = false;
