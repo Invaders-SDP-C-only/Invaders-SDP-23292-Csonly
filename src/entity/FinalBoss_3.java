@@ -4,11 +4,13 @@ import audio.SoundManager;
 import engine.*;
 
 import java.awt.Color;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.List;
 import java.util.ArrayList;
 public class FinalBoss_3 extends Entity implements BossEntity {
 
+    private SecureRandom random;
     private int healPoint;
     private int maxHP;
     private int pointValue;
@@ -77,6 +79,8 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
+
+        this.random = new SecureRandom();
 
         this.maxHP = 100;
         this.healPoint = this.maxHP;
@@ -324,8 +328,8 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         else if (healPoint >= maxHP * 0.2f) speed = 5;
         else                                 speed = 7;
 
-        if (Math.random() < 0.12) {
-            double r = Math.random();
+        if (this.random.nextDouble() < 0.12) {
+            double r = this.random.nextDouble();
             if (r < 0.125)      { moveDirX = 1;  moveDirY = 0;  }
             else if (r < 0.250) { moveDirX = -1; moveDirY = 0;  }
             else if (r < 0.375) { moveDirX = 0;  moveDirY = 1;  }
