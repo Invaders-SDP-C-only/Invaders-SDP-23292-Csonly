@@ -112,7 +112,7 @@ class JsonLoaderTest {
     }
 
     @Test
-    void parse_emptyObject() throws IOException {
+    void parse_emptyObject(){
         // The "level" field is mandatory for the Level constructor.
         // This test ensures that an empty object can be parsed as a value for another field.
         String json = "{\"levels\": [{\"level\": 1, \"empty\": {}}]}";
@@ -120,7 +120,7 @@ class JsonLoaderTest {
     }
 
     @Test
-    void parse_emptyArray() throws IOException {
+    void parse_emptyArray(){
         // The "level" field is mandatory for the Level constructor.
         // This test ensures that an empty array can be parsed as a value for another field.
         String json = "{\"levels\": [{\"level\": 1, \"empty\": []}]}";

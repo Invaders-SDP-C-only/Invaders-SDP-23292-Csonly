@@ -84,7 +84,7 @@ public class GameScreen extends Screen {
 	/** OmegaBoss */
 	private MidBoss omegaBoss;
 	/** SamuraiBoss */
-	private SamuraiBoss SamuraiBoss;
+	private SamuraiBoss samuraiBoss;
 	/** boss4 */
 	private Boss4 boss4;
 	/** SamuraiBoss Sword wave pattern. */
@@ -264,7 +264,7 @@ public class GameScreen extends Screen {
 		this.finalBoss = null;
 		this.finalBoss3 = null;
 		this.omegaBoss = null;
-		this.SamuraiBoss = null;
+		this.samuraiBoss = null;
 		this.boss4 = null;
 		this.currentPhase = StagePhase.wave;
 
@@ -395,7 +395,7 @@ public class GameScreen extends Screen {
 					}
 					break;
 				case boss_wave:
-					if (this.finalBoss == null && this.omegaBoss == null && this.SamuraiBoss == null && this.finalBoss3 == null && this.boss4 == null) {
+					if (this.finalBoss == null && this.omegaBoss == null && this.samuraiBoss == null && this.finalBoss3 == null && this.boss4 == null) {
 						bossReveal();
 						this.enemyShipFormation.clear();
 					}
@@ -417,7 +417,7 @@ public class GameScreen extends Screen {
 								this.screenFinishedCooldown.reset();
 							}
 						}
-					} else if (this.SamuraiBoss != null) {
+					} else if (this.samuraiBoss != null) {
 						// Samurai boss handled in its manager later
 					} else if (this.finalBoss3 != null) {
 						// already handled
@@ -439,7 +439,7 @@ public class GameScreen extends Screen {
 			}
 
 			// Samurai boss manager
-			if (this.SamuraiBoss != null) {
+			if (this.samuraiBoss != null) {
 				sekiroBossManage();
 			}
 
@@ -557,17 +557,17 @@ public class GameScreen extends Screen {
 			}
 		}
 
-		if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-			drawManager.drawEntity(this.SamuraiBoss, this.SamuraiBoss.getPositionX(), this.SamuraiBoss.getPositionY());
+		if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+			drawManager.drawEntity(this.samuraiBoss, this.samuraiBoss.getPositionX(), this.samuraiBoss.getPositionY());
 			// Draws Health / Posture bar in screen.
-			drawManager.drawBossHealthBar(this, this.SamuraiBoss.getHealPoint(), this.SamuraiBoss.getMaxHealth());
-			drawManager.drawBossPostureBar(this, this.SamuraiBoss.getPosture(), this.SamuraiBoss.getMaxPosture());
+			drawManager.drawBossHealthBar(this, this.samuraiBoss.getHealPoint(), this.samuraiBoss.getMaxHealth());
+			drawManager.drawBossPostureBar(this, this.samuraiBoss.getPosture(), this.samuraiBoss.getMaxPosture());
 
 			// Draws death marker on samurai boss.
-			if (this.SamuraiBoss.isPostureBroken()) {
+			if (this.samuraiBoss.isPostureBroken()) {
 				drawManager.drawDeathblowMarker(this,
-						this.SamuraiBoss.getPositionX() + (this.SamuraiBoss.getWidth() / 2),
-						this.SamuraiBoss.getPositionY() + (this.SamuraiBoss.getWidth() / 2));
+						this.samuraiBoss.getPositionX() + (this.samuraiBoss.getWidth() / 2),
+						this.samuraiBoss.getPositionY() + (this.samuraiBoss.getWidth() / 2));
 			}
 			// Draws parry spark effect.
 			if (!this.parrySparkCooldown.checkFinished()) {
@@ -728,7 +728,7 @@ public class GameScreen extends Screen {
 	 * Cleans sword waves that go off screen.
 	 */
 	private void cleanSwordWaves() {
-		Set<SwordWave> recyclable = new HashSet<SwordWave>();
+		Set<SwordWave> recyclable = new HashSet<>();
 		for (SwordWave wave : this.swordWaves) {
 			wave.update();
 			if (wave.getPositionY() < SEPARATION_LINE_HEIGHT
@@ -859,8 +859,8 @@ public class GameScreen extends Screen {
 					}
 				}
 				/** Samurai boss is bullet immunity.*/
-				if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()
-						&& checkCollision(bullet, this.SamuraiBoss)) {
+				if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()
+						&& checkCollision(bullet, this.samuraiBoss)) {
 					recyclable.add(bullet);
 				}
 
@@ -912,8 +912,8 @@ public class GameScreen extends Screen {
 					return;
 				}
 
-				if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-					handleSekiroCollision(this.ship, this.SamuraiBoss);
+				if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+					handleSekiroCollision(this.ship, this.samuraiBoss);
 				}
 			}
 
@@ -950,8 +950,8 @@ public class GameScreen extends Screen {
 				return;
 			}
 
-			if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-				handleSekiroCollision(this.ship, this.SamuraiBoss);
+			if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+				handleSekiroCollision(this.ship, this.samuraiBoss);
 			}
 		}
 
@@ -1019,8 +1019,8 @@ public class GameScreen extends Screen {
 			}
 
 			// Check collision with Samurai boss
-			if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-				handleSekiroCollision(this.shipP2, this.SamuraiBoss);
+			if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+				handleSekiroCollision(this.shipP2, this.samuraiBoss);
 			}
 		}
 	}
@@ -1247,8 +1247,8 @@ public class GameScreen extends Screen {
 				this.logger.info("Omega Boss has spawned!");
 				break;
 			case "SamuraiBoss":
-				this.SamuraiBoss = new SamuraiBoss(this.width / 2, 100, this.width, this.ship, this.shipP2, ITEMS_SEPARATION_LINE_HEIGHT);
-				this.SamuraiBoss.attach(this);
+				this.samuraiBoss = new SamuraiBoss(this.width / 2, 100, this.width, this.ship, this.shipP2, ITEMS_SEPARATION_LINE_HEIGHT);
+				this.samuraiBoss.attach(this);
 				this.ship.setMeleeMode(true);
 				if (this.shipP2 != null) {
 					this.shipP2.setMeleeMode(true);
@@ -1329,9 +1329,9 @@ public class GameScreen extends Screen {
 	 * Manages the SekiroBoss's state and updates.
 	 */
 	private void sekiroBossManage() {
-		if (this.SamuraiBoss == null) return;
+		if (this.samuraiBoss == null) return;
 
-		if (this.SamuraiBoss.isDestroyed()) {
+		if (this.samuraiBoss.isDestroyed()) {
 			if (!this.levelFinished) {
 				this.ship.setMeleeMode(false);
 				if (this.shipP2 != null) this.shipP2.setMeleeMode(false);
@@ -1342,8 +1342,8 @@ public class GameScreen extends Screen {
 			return;
 		}
 
-		this.SamuraiBoss.update();
-		this.swordWaves.addAll(this.SamuraiBoss.shootWave());
+		this.samuraiBoss.update();
+		this.swordWaves.addAll(this.samuraiBoss.shootWave());
 	}
 
 	/**
@@ -1360,7 +1360,6 @@ public class GameScreen extends Screen {
 				boss.executeDeathblow();
 				SoundManager.play("sfx/samurai-kill.wav");
 				playerShip.activateInvincibility(1500);
-				return;
 			}
 			/**
 			 * 2. Parry
@@ -1385,7 +1384,6 @@ public class GameScreen extends Screen {
 				this.parrySparkEffect2.setPositionX(spark2X);
 				this.parrySparkEffect2.setPositionY(sparkY);
 				this.parrySparkCooldown.reset();
-				return;
 			}
 
 			/**
@@ -1398,7 +1396,6 @@ public class GameScreen extends Screen {
 					boss.takePostureDamage(0);
 				}
 				// SoundManager.play("sfx/sword_hit.wav");
-				return;
 			}
 			/**
 			 * Player Damage
@@ -1411,7 +1408,6 @@ public class GameScreen extends Screen {
 				else if (this.shipP2 != null) this.livesP2--;
 				showHealthPopup("-1 Life (Boss Hit!)");
 				logger.info("Ship " + playerShip.getPlayerId() + " hit by boss!");
-				return;
 			}
 		}
 	}
@@ -1510,13 +1506,9 @@ public class GameScreen extends Screen {
 
 				if (b.isOffScreen(width, height)) {
 					bulletsToRemove.add(b);
-					continue;
-				}
-
-				// P1 충돌
-				if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
+				} else if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
 						&& this.checkCollision(b, this.ship)) {
-
+					// P1 충돌
 					if (!this.ship.isInvincible()) {
 						this.ship.destroy();
 						this.livesP1--;
@@ -1524,13 +1516,9 @@ public class GameScreen extends Screen {
 						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
-					continue;
-				}
-
-				// P2 충돌
-				if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
+				} else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
 						&& this.checkCollision(b, this.shipP2)) {
-
+					// P2 충돌
 					if (!this.shipP2.isInvincible()) {
 						this.shipP2.destroy();
 						this.livesP2--;

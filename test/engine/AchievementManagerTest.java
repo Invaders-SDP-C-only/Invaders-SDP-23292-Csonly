@@ -126,7 +126,7 @@ class AchievementManagerTest {
     }
 
     @Test
-    void unlockAchievement_nonExistent_doesNothing() throws IOException {
+    void unlockAchievement_nonExistent_doesNothing(){
         // Act
         achievementManager.unlockAchievement("Non-existent Achievement");
 
@@ -145,7 +145,7 @@ class AchievementManagerTest {
     }
 
     @Test
-    void onTimeElapsed_lessThan60_doesNotUnlock() throws IOException {
+    void onTimeElapsed_lessThan60_doesNotUnlock(){
         // Act
         achievementManager.onTimeElapsedSeconds(59);
 
@@ -191,7 +191,7 @@ class AchievementManagerTest {
     }
 
     @Test
-    void onEnemyDefeated_unlocksBadSniper() throws IOException {
+    void onEnemyDefeated_unlocksBadSniper(){
         // Arrange: 5 shots, 5 hits. Maintain high accuracy so the achievement isn't unlocked early.
         for (int i = 0; i < 5; i++) {
             achievementManager.onShotFired();
@@ -215,7 +215,7 @@ class AchievementManagerTest {
     }
 
     @Test
-    void onEnemyDefeated_doesNotUnlockBadSniper_highAccuracy() throws IOException {
+    void onEnemyDefeated_doesNotUnlockBadSniper_highAccuracy(){
         // Arrange: Simulate a perfect run up to the point of checking.
         // 5 shots, 5 hits. The "Bad Sniper" check is not active yet.
         for (int i = 0; i < 5; i++) {
@@ -235,7 +235,7 @@ class AchievementManagerTest {
     }
 
     @Test
-    void onEnemyDefeated_doesNotUnlockBadSniper_notEnoughShots() throws IOException {
+    void onEnemyDefeated_doesNotUnlockBadSniper_notEnoughShots(){
         // Arrange: 5 shots, 1 hit (20% accuracy, but not enough shots)
         for (int i = 0; i < 5; i++) achievementManager.onShotFired();
         achievementManager.onEnemyDefeated();
