@@ -82,6 +82,9 @@ public final class Core {
 			e.printStackTrace();
 		}
 
+        // Initialize settings manager.
+        GameSettingsManager.getInstance();
+
 		frame = new Frame(WIDTH, HEIGHT);
 		DrawManager.getInstance().setFrame(frame);
 		int width = frame.getWidth();
@@ -258,15 +261,21 @@ public final class Core {
                     returnCode = frame.setScreen(currentScreen);
                     LOGGER.info("Closing achievement screen.");
                     break;
-				case 8: // (추가) CreditScreen
-					currentScreen = new CreditScreen(width, height, FPS);
-					LOGGER.info("Starting " + currentScreen.getClass().getSimpleName() + " screen.");
-					returnCode = frame.setScreen(currentScreen);
-					break;
-                default:
-                    break;
-            }
-
+				                case 8: // (추가) CreditScreen
+									currentScreen = new CreditScreen(width, height, FPS);
+									LOGGER.info("Starting " + currentScreen.getClass().getSimpleName() + " screen.");
+									returnCode = frame.setScreen(currentScreen);
+									break;
+				                case 9:
+				                    currentScreen = new SettingsScreen(width, height, FPS);
+				                    LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
+				                            + " settings screen at " + FPS + " fps.");
+				                    returnCode = frame.setScreen(currentScreen);
+				                    LOGGER.info("Closing settings screen.");
+				                    break;
+				                default:
+				                    break;
+				            }
         } while (returnCode != 0);
 
         fileHandler.flush();

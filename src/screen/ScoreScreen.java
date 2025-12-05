@@ -109,7 +109,7 @@ public class ScoreScreen extends Screen {
 				this.isRunning = false;
 				if (this.isNewRecord)
 					saveScore();
-			} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+			} else if (inputManager.menuInput("SHOOT")) {
 				// Play again.
 				this.returnCode = 2;
 				this.isRunning = false;
@@ -118,24 +118,24 @@ public class ScoreScreen extends Screen {
 			}
 
 			if (this.isNewRecord && this.selectionCooldown.checkFinished()) {
-				if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)) {
+				if (inputManager.menuInput("RIGHT")) {
 					this.nameCharSelected = this.nameCharSelected == 2 ? 0
 							: this.nameCharSelected + 1;
 					this.selectionCooldown.reset();
 				}
-				if (inputManager.isKeyDown(KeyEvent.VK_LEFT)) {
+				if (inputManager.menuInput("LEFT")) {
 					this.nameCharSelected = this.nameCharSelected == 0 ? 2
 							: this.nameCharSelected - 1;
 					this.selectionCooldown.reset();
 				}
-				if (inputManager.isKeyDown(KeyEvent.VK_UP)) {
+				if (inputManager.menuInput("UP")) {
 					this.name[this.nameCharSelected] =
 							(char) (this.name[this.nameCharSelected]
 									== LAST_CHAR ? FIRST_CHAR
 							: this.name[this.nameCharSelected] + 1);
 					this.selectionCooldown.reset();
 				}
-				if (inputManager.isKeyDown(KeyEvent.VK_DOWN)) {
+				if (inputManager.menuInput("DOWN")) {
 					this.name[this.nameCharSelected] =
 							(char) (this.name[this.nameCharSelected]
 									== FIRST_CHAR ? LAST_CHAR

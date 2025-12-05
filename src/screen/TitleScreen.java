@@ -249,17 +249,15 @@ public class TitleScreen extends Screen {
 		draw();
 		if (this.selectionCooldown.checkFinished()
 				&& this.inputDelay.checkFinished()) {
-			if (inputManager.isKeyDown(KeyEvent.VK_UP)
-					|| inputManager.isKeyDown(KeyEvent.VK_W)) {
+			if (inputManager.menuInput("UP")) {
 				previousMenuItem();
 				this.selectionCooldown.reset();
 			}
-			if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
-					|| inputManager.isKeyDown(KeyEvent.VK_S)) {
+			if (inputManager.menuInput("DOWN")) {
 				nextMenuItem();
 				this.selectionCooldown.reset();
 			}
-			if (inputManager.isKeyDown(KeyEvent.VK_SPACE)){
+			if (inputManager.menuInput("SHOOT")){
 				if (this.returnCode != 5) {
 					this.isRunning = false;
 				} else {
@@ -279,14 +277,12 @@ public class TitleScreen extends Screen {
 					}
 				}
 			}
-			if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)
-					|| inputManager.isKeyDown(KeyEvent.VK_D)) {
+			if (inputManager.menuInput("RIGHT")) {
 				this.returnCode = 5;
 				this.targetAngle += 90;
 				this.selectionCooldown.reset();
 			}
-			if (this.returnCode == 5 && inputManager.isKeyDown(KeyEvent.VK_LEFT)
-					|| inputManager.isKeyDown(KeyEvent.VK_A)) {
+			if (this.returnCode == 5 && inputManager.menuInput("LEFT")) {
 				this.returnCode = 4;
 				this.targetAngle -= 90;
 				this.selectionCooldown.reset();
@@ -304,6 +300,8 @@ public class TitleScreen extends Screen {
 		else if (this.returnCode == 3)
 			this.returnCode = 6;
 		else if (this.returnCode == 6)
+			this.returnCode = 9;
+		else if (this.returnCode == 9)
 			this.returnCode = 4;
 		else if (this.returnCode == 4)
 			this.returnCode = 0;
@@ -325,6 +323,8 @@ public class TitleScreen extends Screen {
 		else if (this.returnCode == 0)
 			this.returnCode = 4;
 		else if (this.returnCode == 4)
+			this.returnCode = 9;
+		else if (this.returnCode == 9)
 			this.returnCode = 6;
 		else if (this.returnCode == 6)
 			this.returnCode = 3;

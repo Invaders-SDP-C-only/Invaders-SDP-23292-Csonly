@@ -17,12 +17,15 @@ public final class InputManager implements KeyListener {
 	private static boolean[] keys;
 	/** Singleton instance of the class. */
 	private static InputManager instance;
+    /** Last key code pressed. */
+    private int lastKeyCode;
 
 	/**
 	 * Private constructor.
 	 */
 	private InputManager() {
 		keys = new boolean[NUM_KEYS];
+        this.lastKeyCode = -1;
 	}
 
 	/**
@@ -47,6 +50,28 @@ public final class InputManager implements KeyListener {
 		return keys[keyCode];
 	}
 
+    public boolean isActionPressed(String action) {
+        GameSettingsManager settings = GameSettingsManager.getInstance();
+        return isKeyDown(settings.getKey(action));
+    }
+
+    public boolean isActionPressedP2(String action) {
+        GameSettingsManager settings = GameSettingsManager.getInstance();
+        return isKeyDown(settings.getKeyP2(action));
+    }
+
+    public boolean menuInput(String action) {
+        return isActionPressed(action) || isActionPressedP2(action);
+    }
+
+    public int getLastKeyCode() {
+        return this.lastKeyCode;
+    }
+
+    public void clearLastKeyCode() {
+        this.lastKeyCode = -1;
+    }
+
 	/**
 	 * Changes the state of the key to pressed.
 	 * 
@@ -57,6 +82,7 @@ public final class InputManager implements KeyListener {
 	public void keyPressed(final KeyEvent key) {
 		if (key.getKeyCode() >= 0 && key.getKeyCode() < NUM_KEYS)
 			keys[key.getKeyCode()] = true;
+        this.lastKeyCode = key.getKeyCode();
 	}
 
 	/**
@@ -80,13 +106,5 @@ public final class InputManager implements KeyListener {
 	@Override
 	public void keyTyped(final KeyEvent key) {
 
-	}
-
-	public boolean isP1KeyDown(int keyCode) {
-		return isKeyDown(keyCode);
-	}
-
-	public boolean isP2KeyDown(int keyCode) {
-		return isKeyDown(keyCode);
 	}
 }

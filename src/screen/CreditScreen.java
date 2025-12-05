@@ -85,7 +85,7 @@ public class CreditScreen extends Screen {
         super.update();
         draw();
         // Pressing the spacebar will exit the screen.
-        if (inputManager.isKeyDown(KeyEvent.VK_SPACE) && this.inputDelay.checkFinished()) {
+        if (inputManager.menuInput("SHOOT") && this.inputDelay.checkFinished()) {
             this.isRunning = false;
         }
     }
