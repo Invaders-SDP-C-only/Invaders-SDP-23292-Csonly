@@ -31,7 +31,7 @@ public class ModeSelectScreen extends Screen {
     // Enemy background (same feel as TitleScreen)
     private List<Entity> backgroundEnemies;
     private Cooldown enemySpawnCooldown;
-    private SecureRandom random;
+    private SecureRandom random = new SecureRandom();
 
     private static final int ENEMY_SPAWN_COOLDOWN = 2000;
     private static final double ENEMY_SPAWN_CHANCE = 0.3;
@@ -78,10 +78,9 @@ public class ModeSelectScreen extends Screen {
         }
 
         // Background enemies animation (independent of TitleScreen enemies)
-                    this.backgroundEnemies = new ArrayList<Entity>();
+                    this.backgroundEnemies = new ArrayList<>();
                     this.enemySpawnCooldown = Core.getCooldown(ENEMY_SPAWN_COOLDOWN);
                     this.enemySpawnCooldown.reset();
-                    this.random = new SecureRandom();
                 }
             
                 @Override
@@ -105,7 +104,8 @@ public class ModeSelectScreen extends Screen {
                                     SpriteType.EnemyShipC1
                             };
                             SpriteType randomEnemyType = enemyTypes[random.nextInt(enemyTypes.length)];
-                            int randomX = (int) (this.random.nextDouble() * this.getWidth());                int speed = random.nextInt(2) + 1;
+                            int randomX = (int) (this.random.nextDouble() * this.getWidth());
+                            int speed = random.nextInt(2) + 1;
                 this.backgroundEnemies.add(new BackgroundEnemy(randomX, -20, speed, randomEnemyType));
             }
         }
@@ -182,8 +182,8 @@ public class ModeSelectScreen extends Screen {
         final int centerY = this.getHeight() / 2;
 
         for (Entity enemy : this.backgroundEnemies) {
-            float relX = enemy.getPositionX() - centerX;
-            float relY = enemy.getPositionY() - centerY;
+            float relX = enemy.getPositionX() - (float)centerX;
+            float relY = enemy.getPositionY() - (float)centerY;
 
             double rotatedX = relX * cosAngle - relY * sinAngle;
             double rotatedY = relX * sinAngle + relY * cosAngle;

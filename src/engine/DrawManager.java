@@ -258,8 +258,8 @@ public final class DrawManager {
 
 		int cx = x + w / 2;
 		int cy = y + h / 2;
-		int rx = (int) (w / 2 + radiusGrow);
-		int ry = (int) (h / 2 + radiusGrow);
+		int rx = (int) ((double)w / 2 + radiusGrow);
+		int ry = (int) ((double)h / 2 + radiusGrow);
 
 		g2.setColor(new Color(255, 180, 120, (int) (60 * a)));
 		g2.setStroke(new BasicStroke(6f));

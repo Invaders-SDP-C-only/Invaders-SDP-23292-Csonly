@@ -8,7 +8,6 @@ import engine.FileManager;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
@@ -39,8 +38,8 @@ public class Boss4 extends Entity implements BossEntity{
     private double spiralAngle2 = 180;
 
     // Sprites for Boss4
-    private transient BufferedImage[] sprites;
-    private transient BufferedImage currentSprite;
+    private BufferedImage[] sprites;
+    private BufferedImage currentSprite;
     private int animationFrame = 0;
     // Sprite indexes
     private static final int SPRITE_IDLE = 0;
@@ -71,7 +70,8 @@ public class Boss4 extends Entity implements BossEntity{
     // Movement fields
     private enum MovementState { STATIONARY, SLOW_DRIFT, MOVING_TO_POINT }
     private MovementState currentMovementState = MovementState.STATIONARY;
-    private int targetX, targetY;
+    private int targetX;
+    private int targetY;
     private int zigDirection = 1;
 
 
@@ -309,7 +309,7 @@ public class Boss4 extends Entity implements BossEntity{
             return;
         }
 
-        double angle = Math.atan2(this.targetY - this.positionY, this.targetX - this.positionX);
+        double angle = Math.atan2(this.targetY - (double)this.positionY, this.targetX - (double)this.positionX);
         this.positionX += (int)(Math.cos(angle) * speed);
         this.positionY += (int)(Math.sin(angle) * speed);
     }
@@ -436,8 +436,8 @@ public class Boss4 extends Entity implements BossEntity{
         // Aimed FAN of bullets
         if (playerShip != null && this.aimedShotCooldown.checkFinished()) {
             this.aimedShotCooldown.reset();
-            double angleToPlayer = Math.atan2(playerShip.getPositionY() - (this.positionY + this.height / 2),
-                                              playerShip.getPositionX() - (this.positionX + this.width / 2));
+            double angleToPlayer = Math.atan2(playerShip.getPositionY() - (this.positionY + (double)this.height / 2),
+                                              playerShip.getPositionX() - (this.positionX + (double)this.width / 2));
             
             int fanBullets = 3; // 3-shot fan
             double spread = Math.toRadians(20); // 20 degree spread
