@@ -42,6 +42,14 @@ public class GameScreen extends Screen {
 	private static final int SEPARATION_LINE_HEIGHT = 45;
 	/** Height of the items separation line (above items). */
 	private static final int ITEMS_SEPARATION_LINE_HEIGHT = 400;
+	/** Popup text shown on boss collisions. */
+	private static final String BOSS_COLLISION_HEALTH_POPUP = "-1 Life (Boss Collision!)";
+	/** Popup text shown on standard health loss. */
+	private static final String GENERIC_HEALTH_POPUP = "-1 Health";
+	/** Log suffix indicating lives left. */
+	private static final String LIVES_REMAINING_SUFFIX = " lives remaining.";
+	/** Log prefix for generic player hit. */
+	private static final String HIT_ON_PLAYER_PREFIX = "Hit on player ship, ";
 
 	/** Returns the Y-coordinate of the bottom boundary for enemies (above items HUD) */
 	public static int getItemsSeparationLineHeight() {
@@ -458,7 +466,7 @@ public class GameScreen extends Screen {
 				if (!this.ship.isInvincible()) {
 					this.ship.destroy();
 					this.livesP1--;
-					showHealthPopup("-1 Health");
+					showHealthPopup(GENERIC_HEALTH_POPUP);
 					this.logger.info("Player hit by LaserBeam!");
 				}
 			}
@@ -470,7 +478,7 @@ public class GameScreen extends Screen {
 				if (!this.shipP2.isInvincible()) {
 					this.shipP2.destroy();
 					this.livesP2--;
-					showHealthPopup("-1 Health");
+					showHealthPopup(GENERIC_HEALTH_POPUP);
 					this.logger.info("Player2 hit by LaserBeam!");
 				}
 			}
@@ -743,9 +751,9 @@ public class GameScreen extends Screen {
 						if (!this.ship.isDestroyed()) {
 							this.ship.destroy();
 							this.livesP1--;
-							showHealthPopup("-1 Health");
-							this.logger.info("Hit on player ship, " + this.livesP1
-									+ " lives remaining.");
+							showHealthPopup(GENERIC_HEALTH_POPUP);
+							this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1
+									+ LIVES_REMAINING_SUFFIX);
 						}
 					}
 				} else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
@@ -755,9 +763,9 @@ public class GameScreen extends Screen {
 						if (!this.shipP2.isDestroyed()) {
 							this.shipP2.destroy();
 							this.livesP2--;
-							showHealthPopup("-1 Health");
-							this.logger.info("Hit on player ship, " + this.livesP2
-									+ " lives remaining.");
+							showHealthPopup(GENERIC_HEALTH_POPUP);
+							this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP2
+									+ LIVES_REMAINING_SUFFIX);
 						}
 					}
 				}
@@ -886,7 +894,7 @@ public class GameScreen extends Screen {
 					this.livesP1--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship collided with enemy! " + this.livesP1
-							+ " lives remaining.");
+							+ LIVES_REMAINING_SUFFIX);
 					return;
 				}
 			}
@@ -900,7 +908,7 @@ public class GameScreen extends Screen {
 					this.livesP1--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship collided with special enemy formation! "
-							+ this.livesP1 + " lives remaining.");
+							+ this.livesP1 + LIVES_REMAINING_SUFFIX);
 					return;
 				}
 
@@ -914,9 +922,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.ship, this.omegaBoss)) {
 				this.ship.destroy();
 				this.livesP1--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship collided with omega boss! " + this.livesP1
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -925,9 +933,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.ship, this.finalBoss)) {
 				this.ship.destroy();
 				this.livesP1--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship collided with final boss! " + this.livesP1
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -936,9 +944,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.ship, this.boss4)) {
 				this.ship.destroy();
 				this.livesP1--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship collided with boss4! " + this.livesP1
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -958,7 +966,7 @@ public class GameScreen extends Screen {
 					this.livesP2--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship P2 collided with enemy! " + this.livesP2
-							+ " lives remaining.");
+							+ LIVES_REMAINING_SUFFIX);
 					return;
 				}
 			}
@@ -972,7 +980,7 @@ public class GameScreen extends Screen {
 					this.livesP2--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship P2 collided with special enemy formation! "
-							+ this.livesP2 + " lives remaining.");
+							+ this.livesP2 + LIVES_REMAINING_SUFFIX);
 					return;
 				}
 			}
@@ -982,9 +990,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.shipP2, this.omegaBoss)) {
 				this.shipP2.destroy();
 				this.livesP2--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship P2 collided with omega boss! " + this.livesP2
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -993,9 +1001,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.shipP2, this.finalBoss)) {
 				this.shipP2.destroy();
 				this.livesP2--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship P2 collided with final boss! " + this.livesP2
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -1004,9 +1012,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.shipP2, this.boss4)) {
 				this.shipP2.destroy();
 				this.livesP2--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship P2 collided with boss4! " + this.livesP2
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -1029,7 +1037,7 @@ public class GameScreen extends Screen {
 				this.ship.destroy();
 				this.livesP1--;
 				showHealthPopup("-1 Life (Wave Hit!)");
-				this.logger.info("Ship 1 hit by Sword Wave! " + this.livesP1 + " lives remaining.");
+				this.logger.info("Ship 1 hit by Sword Wave! " + this.livesP1 + LIVES_REMAINING_SUFFIX);
 			}
 			else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
 					&& !this.shipP2.isInvincible() && checkCollision(wave, this.shipP2)) {
@@ -1038,7 +1046,7 @@ public class GameScreen extends Screen {
 				this.shipP2.destroy();
 				this.livesP2--;
 				showHealthPopup("-1 Life (Wave Hit!)");
-				this.logger.info("Ship 2 hit by Sword Wave! " + this.livesP2 + " lives remaining.");
+				this.logger.info("Ship 2 hit by Sword Wave! " + this.livesP2 + LIVES_REMAINING_SUFFIX);
 			}
 		}
 		this.swordWaves.removeAll(recyclable);
@@ -1295,14 +1303,14 @@ public class GameScreen extends Screen {
 					if (!this.ship.isDestroyed()) {
 						this.ship.destroy();
 						this.livesP1--;
-						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				} else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed() && this.checkCollision(b, this.shipP2)) {
 					if (!this.shipP2.isDestroyed()) {
 						this.shipP2.destroy();
 						this.livesP2--;
-						this.logger.info("Hit on player ship, " + this.livesP2 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP2 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
@@ -1463,7 +1471,7 @@ public class GameScreen extends Screen {
 					if (!this.ship.isDestroyed()) {
 						this.ship.destroy();
 						this.livesP1--;
-						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
@@ -1471,7 +1479,7 @@ public class GameScreen extends Screen {
 					if (!this.shipP2.isDestroyed()) {
 						this.shipP2.destroy();
 						this.livesP2--;
-						this.logger.info("Hit on player ship, " + this.livesP2 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP2 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
@@ -1512,8 +1520,8 @@ public class GameScreen extends Screen {
 					if (!this.ship.isInvincible()) {
 						this.ship.destroy();
 						this.livesP1--;
-						showHealthPopup("-1 Health");
-						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+						showHealthPopup(GENERIC_HEALTH_POPUP);
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 					continue;
@@ -1526,8 +1534,8 @@ public class GameScreen extends Screen {
 					if (!this.shipP2.isInvincible()) {
 						this.shipP2.destroy();
 						this.livesP2--;
-						showHealthPopup("-1 Health");
-						this.logger.info("Hit on player ship (P2), " + this.livesP2 + " lives remaining.");
+						showHealthPopup(GENERIC_HEALTH_POPUP);
+						this.logger.info("Hit on player ship (P2), " + this.livesP2 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
