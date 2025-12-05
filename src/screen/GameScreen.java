@@ -331,11 +331,11 @@ public class GameScreen extends Screen {
 			}
 
 			if (this.livesP1 > 0 && !this.ship.isDestroyed()) {
-				boolean p1Right = inputManager.isP1KeyDown(KeyEvent.VK_D);
-				boolean p1Left = inputManager.isP1KeyDown(KeyEvent.VK_A);
-				boolean p1Up = inputManager.isP1KeyDown(KeyEvent.VK_W);
-				boolean p1Down = inputManager.isP1KeyDown(KeyEvent.VK_S);
-				boolean p1Fire = inputManager.isP1KeyDown(KeyEvent.VK_SPACE);
+				boolean p1Right = inputManager.isActionPressed("RIGHT");
+				boolean p1Left = inputManager.isActionPressed("LEFT");
+				boolean p1Up = inputManager.isActionPressed("UP");
+				boolean p1Down = inputManager.isActionPressed("DOWN");
+				boolean p1Fire = inputManager.isActionPressed("SHOOT");
 
 				boolean isRightBorder = this.ship.getPositionX()
 						+ this.ship.getWidth() + this.ship.getSpeed() > this.width - 1;
@@ -358,11 +358,11 @@ public class GameScreen extends Screen {
 			}
 
 			if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()) {
-				boolean p2Right = inputManager.isP2KeyDown(KeyEvent.VK_RIGHT);
-				boolean p2Left = inputManager.isP2KeyDown(KeyEvent.VK_LEFT);
-				boolean p2Up = inputManager.isP2KeyDown(KeyEvent.VK_UP);
-				boolean p2Down = inputManager.isP2KeyDown(KeyEvent.VK_DOWN);
-				boolean p2Fire = inputManager.isP2KeyDown(KeyEvent.VK_ENTER);
+				boolean p2Right = inputManager.isActionPressedP2("RIGHT");
+				boolean p2Left = inputManager.isActionPressedP2("LEFT");
+				boolean p2Up = inputManager.isActionPressedP2("UP");
+				boolean p2Down = inputManager.isActionPressedP2("DOWN");
+				boolean p2Fire = inputManager.isActionPressedP2("SHOOT");
 
 				boolean p2RightBorder = this.shipP2.getPositionX()
 						+ this.shipP2.getWidth() + this.shipP2.getSpeed() > this.width - 1;

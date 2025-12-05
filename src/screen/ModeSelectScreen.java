@@ -126,9 +126,8 @@ public class ModeSelectScreen extends Screen {
             return;
         }
         if (!this.inputArmed) {
-            boolean enterDown = inputManager.isKeyDown(KeyEvent.VK_ENTER);
-            boolean spaceDown = inputManager.isKeyDown(KeyEvent.VK_SPACE);
-            if (!enterDown && !spaceDown) {
+            boolean confirmPressed = inputManager.menuInput("SHOOT");
+            if (!confirmPressed) {
                 this.inputArmed = true;
             }
             draw();
@@ -137,11 +136,11 @@ public class ModeSelectScreen extends Screen {
 
         // ---- Navigation: once per cooldown, like TitleScreen ----
         if (this.selectionCooldown.checkFinished()) {
-            if (inputManager.isKeyDown(KeyEvent.VK_UP) || inputManager.isKeyDown(KeyEvent.VK_W)) {
+            if (inputManager.menuInput("UP")) {
                 this.selection = (this.selection - 1 + 3) % 3; // 0↔1↔2
                 this.targetAngle -= 90;
                 this.selectionCooldown.reset();
-            } else if (inputManager.isKeyDown(KeyEvent.VK_DOWN) || inputManager.isKeyDown(KeyEvent.VK_S)) {
+            } else if (inputManager.menuInput("DOWN")) {
                 this.selection = (this.selection + 1) % 3;
                 this.targetAngle += 90;
                 this.selectionCooldown.reset();
@@ -154,8 +153,7 @@ public class ModeSelectScreen extends Screen {
             return;
         }
 
-        if (inputManager.isKeyDown(KeyEvent.VK_ENTER)
-                || inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+        if (inputManager.menuInput("SHOOT")) {
             if (this.selection == 0) this.selectedMode = "1P";
             else if (this.selection == 1) this.selectedMode = "2P";
             else this.selectedMode = "CANCEL";

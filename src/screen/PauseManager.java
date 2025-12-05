@@ -30,22 +30,21 @@ public class PauseManager {
     public void update(InputManager input) {
 
         // ↑
-        boolean up = input.isKeyDown(KeyEvent.VK_UP);
+        boolean up = input.menuInput("UP");
         if (up && !upLast) {
             menuIndex = (menuIndex + 2) % 3;
         }
         upLast = up;
 
         // ↓
-        boolean down = input.isKeyDown(KeyEvent.VK_DOWN);
+        boolean down = input.menuInput("DOWN");
         if (down && !downLast) {
             menuIndex = (menuIndex + 1) % 3;
         }
         downLast = down;
 
         // ENTER or SPACE
-        boolean confirm = input.isKeyDown(KeyEvent.VK_ENTER) ||
-                input.isKeyDown(KeyEvent.VK_SPACE);
+        boolean confirm = input.menuInput("SHOOT");
 
         if (confirm && !confirmLast) {
             if (menuIndex == 0)      wantQuit = true;

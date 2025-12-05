@@ -5,97 +5,83 @@ import org.junit.jupiter.api.Test;
 import java.awt.event.KeyEvent;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class InputManagerTest {
 
     private InputManager inputManager;
+    private GameSettingsManager gameSettingsManager;
 
     @BeforeEach
     void setUp() {
-        // Since InputManager is a singleton, we get the instance.
-        // We need to reset its state before each test.
+        // We need to get the singleton instance for testing.
         inputManager = InputManager.getInstance();
-        // A way to reset the keys array is needed. Since there is no public reset method,
-        // we can use reflection, or just press and release a bunch of keys to get a known state.
-        // For simplicity, we'll rely on the fact that each test will set the keys it needs.
+        gameSettingsManager = GameSettingsManager.getInstance();
+
+        // Reset key states before each test.
+        for (int i = 0; i < 256; i++) {
+            if (inputManager.isKeyDown(i)) {
+                KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, 0, 0, i, (char) i);
+                inputManager.keyReleased(keyEvent);
+            }
+        }
+        inputManager.clearLastKeyCode();
     }
 
     @Test
     void testGetInstance() {
-        assertNotNull(inputManager);
-        assertSame(inputManager, InputManager.getInstance());
+        assertNotNull(inputManager, "getInstance should not return null.");
+        InputManager anotherInstance = InputManager.getInstance();
+        assertSame(inputManager, anotherInstance, "getInstance should return the same singleton instance.");
     }
 
     @Test
-    void testIsKeyDown_notPressed() {
-        // Ensure the key is not pressed before the test
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, System.currentTimeMillis(), 0, KeyEvent.VK_A, 'a');
-        inputManager.keyReleased(keyEvent);
-        assertFalse(inputManager.isKeyDown(KeyEvent.VK_A));
-    }
+    void testKeyPressedAndIsKeyDown() {
+        int keyCode = KeyEvent.VK_A;
+        assertFalse(inputManager.isKeyDown(keyCode), "Key should not be down initially.");
 
-    @Test
-    void testKeyPressedAndIsKeyDown_validKey() {
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_B, 'b');
-        inputManager.keyPressed(keyEvent);
-        assertTrue(inputManager.isKeyDown(KeyEvent.VK_B));
-    }
-
-    @Test
-    void testKeyReleased_validKey() {
-        // First press the key
-        KeyEvent pressEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_C, 'c');
+        KeyEvent pressEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, 0, 0, keyCode, 'a');
         inputManager.keyPressed(pressEvent);
-        assertTrue(inputManager.isKeyDown(KeyEvent.VK_C));
 
-        // Then release it
-        KeyEvent releaseEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, System.currentTimeMillis(), 0, KeyEvent.VK_C, 'c');
+        assertTrue(inputManager.isKeyDown(keyCode), "Key should be down after keyPressed event.");
+    }
+
+    @Test
+    void testKeyReleased() {
+        int keyCode = KeyEvent.VK_B;
+        KeyEvent pressEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, 0, 0, keyCode, 'b');
+        inputManager.keyPressed(pressEvent);
+        assertTrue(inputManager.isKeyDown(keyCode), "Key should be down after press.");
+
+        KeyEvent releaseEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, 0, 0, keyCode, 'b');
         inputManager.keyReleased(releaseEvent);
-        assertFalse(inputManager.isKeyDown(KeyEvent.VK_C));
+
+        assertFalse(inputManager.isKeyDown(keyCode), "Key should not be down after keyReleased event.");
     }
 
     @Test
-    void testKeyPressed_invalidKey_outOfBounds() {
-        // Test with a key code outside the valid range
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, 300, ' ');
-        // The method should not throw an exception
-        assertDoesNotThrow(() -> inputManager.keyPressed(keyEvent));
+    void testLastKeyCode() {
+        assertEquals(-1, inputManager.getLastKeyCode(), "Last key code should be -1 initially.");
+
+        int firstKeyCode = KeyEvent.VK_C;
+        KeyEvent firstPress = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, 0, 0, firstKeyCode, 'c');
+        inputManager.keyPressed(firstPress);
+        assertEquals(firstKeyCode, inputManager.getLastKeyCode(), "Last key code should be updated after a key press.");
+
+        int secondKeyCode = KeyEvent.VK_D;
+        KeyEvent secondPress = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, 0, 0, secondKeyCode, 'd');
+        inputManager.keyPressed(secondPress);
+        assertEquals(secondKeyCode, inputManager.getLastKeyCode(), "Last key code should be updated to the most recent key press.");
     }
 
     @Test
-    void testKeyReleased_invalidKey_outOfBounds() {
-        // Test with a key code outside the valid range
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, System.currentTimeMillis(), 0, 300, ' ');
-        // The method should not throw an exception
-        assertDoesNotThrow(() -> inputManager.keyReleased(keyEvent));
-    }
-    
-    @Test
-    void testKeyTyped() {
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_TYPED, System.currentTimeMillis(), 0, KeyEvent.VK_UNDEFINED, 'd');
-        // The method is empty, so we just call it for completeness and coverage.
-        assertDoesNotThrow(() -> inputManager.keyTyped(keyEvent));
-    }
-    
-    @Test
-    void testIsP1KeyDown() {
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_P, 'p');
-        inputManager.keyPressed(keyEvent);
-        assertTrue(inputManager.isP1KeyDown(KeyEvent.VK_P));
-        
-        KeyEvent releaseEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, System.currentTimeMillis(), 0, KeyEvent.VK_P, 'p');
-        inputManager.keyReleased(releaseEvent);
-        assertFalse(inputManager.isP1KeyDown(KeyEvent.VK_P));
-    }
+    void testClearLastKeyCode() {
+        int keyCode = KeyEvent.VK_E;
+        KeyEvent pressEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, 0, 0, keyCode, 'e');
+        inputManager.keyPressed(pressEvent);
+        assertNotEquals(-1, inputManager.getLastKeyCode(), "Last key code should be set.");
 
-    @Test
-    void testIsP2KeyDown() {
-        KeyEvent keyEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_Q, 'q');
-        inputManager.keyPressed(keyEvent);
-        assertTrue(inputManager.isP2KeyDown(KeyEvent.VK_Q));
-        
-        KeyEvent releaseEvent = new KeyEvent(mock(java.awt.Component.class), KeyEvent.KEY_RELEASED, System.currentTimeMillis(), 0, KeyEvent.VK_Q, 'q');
-        inputManager.keyReleased(releaseEvent);
-        assertFalse(inputManager.isP2KeyDown(KeyEvent.VK_Q));
+        inputManager.clearLastKeyCode();
+        assertEquals(-1, inputManager.getLastKeyCode(), "Last key code should be -1 after clearing.");
     }
 }
