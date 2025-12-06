@@ -1,12 +1,11 @@
 package screen;
 
-import java.awt.Graphics;
-import java.awt.Color;
+import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import audio.SoundManager;
@@ -54,6 +53,75 @@ public class GameScreen extends Screen {
 	/** Returns the Y-coordinate of the bottom boundary for enemies (above items HUD) */
 	public static int getItemsSeparationLineHeight() {
 		return ITEMS_SEPARATION_LINE_HEIGHT;
+	}
+
+	// === Visual Effects Variables (from SandboxScreen) ===
+	/** Screen shake intensity. */
+	private int shakeIntensity = 0;
+	/** Duration of screen shake. */
+	private int shakeDuration = 0;
+	/** Hit stop duration (frames to freeze game logic). */
+	private int hitStopFrames = 0;
+	/** List of active visual particles. */
+	private List<Particle> particles;
+	/** Set of temporary visual effects (Explosions, etc.). */
+	private Set<TemporaryEffect> effects;
+	/** Message to display on screen (e.g. Parry instructions). */
+	private String instructionMessage;
+	/** Cooldown for instruction message display. */
+	private Cooldown instructionCooldown;
+
+	/**
+	 * Inner class for managing temporary visual effects (e.g., explosions).
+	 */
+	private class TemporaryEffect {
+		Entity entity;
+		Cooldown cooldown;
+
+		public TemporaryEffect(Entity entity, int duration) {
+			this.entity = entity;
+			this.cooldown = Core.getCooldown(duration);
+			this.cooldown.reset();
+		}
+
+		public boolean isFinished() {
+			return cooldown.checkFinished();
+		}
+	}
+
+	/**
+	 * Inner class for particle effects (Sparks, Debris).
+	 */
+	private class Particle {
+		double x, y;
+		double dx, dy;
+		Color color;
+		int life;
+		int size;
+
+		public Particle(double x, double y, Color color, int speed, int size) {
+			this.x = x;
+			this.y = y;
+			this.color = color;
+			this.size = size;
+			this.life = 10 + (int)(Math.random() * 10); // 10~20 frames life
+			double angle = Math.random() * Math.PI * 2;
+			double spd = Math.random() * speed;
+			this.dx = Math.cos(angle) * spd;
+			this.dy = Math.sin(angle) * spd;
+		}
+
+		public boolean update() {
+			x += dx;
+			y += dy;
+			life--;
+			return life > 0;
+		}
+
+		public void draw(Graphics2D g) {
+			g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.min(255, life * 25)));
+			g.fillRect((int)x, (int)y, size, size);
+		}
 	}
 
 	/** Current level data (direct from Level system). */
@@ -246,6 +314,11 @@ public class GameScreen extends Screen {
 		this.bullets = new HashSet<Bullet>();
 		this.dropItems = new HashSet<DropItem>();
 
+		// For Sekiro-style boss
+		this.particles = new ArrayList<>();
+		this.effects = new HashSet<>();
+		this.instructionCooldown = Core.getCooldown(3000);
+
 		// Special input delay / countdown.
 		this.gameStartTime = System.currentTimeMillis();
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
@@ -289,6 +362,40 @@ public class GameScreen extends Screen {
 	}
 
 	/**
+	 * Triggers visual impact effects (Shake, Freeze, Particles).
+	 */
+	private void triggerImpactEffect(int x, int y, int shake, int stopFrames, Color sparkColor) {
+		this.shakeIntensity = shake;
+		this.shakeDuration = 5;
+		this.hitStopFrames = stopFrames;
+		for (int i = 0; i < 10; i++) {
+			particles.add(new Particle(x, y, sparkColor, 5, 3));
+		}
+	}
+
+	/**
+	 * Spawns an explosion effect.
+	 */
+	private void triggerExplosion(int x, int y, Color color) {
+		Entity explosion = new Entity(x, y, 13*2, 8*2, color);
+		explosion.spriteType = DrawManager.SpriteType.ShipDestroyed;
+		effects.add(new TemporaryEffect(explosion, 500));
+	}
+
+	/**
+	 * Spawns parry spark effects.
+	 */
+	private void triggerParryEffect(Ship player) {
+		int centerX = player.getPositionX() + (player.getWidth() / 2);
+		int boundaryY = player.getPositionY();
+		this.parrySparkEffect.setPositionX(centerX - 10);
+		this.parrySparkEffect.setPositionY(boundaryY - 10);
+		this.parrySparkEffect2.setPositionX(centerX + 10);
+		this.parrySparkEffect2.setPositionY(boundaryY - 10);
+		this.parrySparkCooldown.reset();
+	}
+
+	/**
 	 * Updates the elements on screen and checks for events.
 	 */
 	protected final void update() {
@@ -326,6 +433,26 @@ public class GameScreen extends Screen {
 			pauseManager.resetFlags();
 			draw();
 			return;
+		}
+
+		// Hit Stop Logic
+		if (hitStopFrames > 0) {
+			hitStopFrames--;
+			draw(); // Draw to show the frozen frame
+			return;
+		}
+
+		// Screen Shake Decay
+		if (shakeDuration > 0) {
+			shakeDuration--;
+			if (shakeDuration <= 0) shakeIntensity = 0;
+		}
+
+		// Particle Update
+		for (int i = 0; i < particles.size(); i++) {
+			if (!particles.get(i).update()) {
+				particles.remove(i--);
+			}
 		}
 
 		if (this.inputDelay.checkFinished() && !this.levelFinished) {
@@ -461,6 +588,7 @@ public class GameScreen extends Screen {
 			cleanBullets();
 			cleanItems();
 			cleanSwordWaves();
+			cleanEffects();
 		}
 
 		// Collision LaserBeam
@@ -534,7 +662,15 @@ public class GameScreen extends Screen {
 	 */
 	private void draw() {
 		drawManager.initDrawing(this);
-		Graphics g = drawManager.getBackBufferGraphics();
+		Graphics2D g = (Graphics2D) drawManager.getBackBufferGraphics();
+
+		// Apply Screen Shake
+		int dx = 0, dy = 0;
+		if (shakeIntensity > 0) {
+			dx = (int) ((Math.random() * shakeIntensity * 2) - shakeIntensity);
+			dy = (int) ((Math.random() * shakeIntensity * 2) - shakeIntensity);
+			g.translate(dx, dy);
+		}
 
 		if (this.livesP1 > 0) {
 			drawManager.drawEntity(this.ship, this.ship.getPositionX(),
@@ -564,17 +700,7 @@ public class GameScreen extends Screen {
 		}
 
 		if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
-			drawManager.drawEntity(this.samuraiBoss, this.samuraiBoss.getPositionX(), this.samuraiBoss.getPositionY());
-			// Draws Health / Posture bar in screen.
-			drawManager.drawBossHealthBar(this, this.samuraiBoss.getHealPoint(), this.samuraiBoss.getMaxHealth());
-			drawManager.drawBossPostureBar(this, this.samuraiBoss.getPosture(), this.samuraiBoss.getMaxPosture());
-
-			// Draws death marker on samurai boss.
-			if (this.samuraiBoss.isPostureBroken()) {
-				drawManager.drawDeathblowMarker(this,
-						this.samuraiBoss.getPositionX() + (this.samuraiBoss.getWidth() / 2),
-						this.samuraiBoss.getPositionY() + (this.samuraiBoss.getWidth() / 2));
-			}
+			this.samuraiBoss.draw(drawManager);
 			// Draws parry spark effect.
 			if (!this.parrySparkCooldown.checkFinished()) {
 				drawManager.drawEntity(this.parrySparkEffect,
@@ -653,6 +779,21 @@ public class GameScreen extends Screen {
 		for (DropItem dropItem : this.dropItems)
 			drawManager.drawEntity(dropItem, dropItem.getPositionX(), dropItem.getPositionY());
 
+		// Draw particles
+		for (Particle p : particles) {
+			p.draw(g);
+		}
+
+		// Draw effects
+		for(TemporaryEffect e : effects) {
+			drawManager.drawEntity(e.entity, e.entity.getPositionX(), e.entity.getPositionY());
+		}
+
+		// Revert Screen Shake for UI
+		if (shakeIntensity > 0) {
+			g.translate(-dx, -dy);
+		}
+
 		// Interface.
 		drawManager.drawScore(this, this.scoreP1);   // Top line still displays P1
 		drawManager.drawScoreP2(this, this.scoreP2); // Added second line for P2
@@ -676,6 +817,11 @@ public class GameScreen extends Screen {
 			drawManager.drawHealthPopup(this, this.healthPopupText);
 		} else {
 			this.healthPopupText = null;
+		}
+
+		// instructionMessage
+		if (this.instructionMessage != null && !this.instructionCooldown.checkFinished()) {
+			drawManager.drawCenteredBigString(this, this.instructionMessage, this.height / 2 - 100);
 		}
 
 		// Countdown to game start.
@@ -742,6 +888,17 @@ public class GameScreen extends Screen {
 				recyclable.add(wave);
 		}
 		this.swordWaves.removeAll(recyclable);
+	}
+
+	/**
+	 * Cleans finished visual effects.
+	 */
+	private void cleanEffects() {
+		Set<TemporaryEffect> finished = new HashSet<>();
+		for(TemporaryEffect e : effects) {
+			if(e.isFinished()) finished.add(e);
+		}
+		effects.removeAll(finished);
 	}
 
 	/**
@@ -1038,22 +1195,46 @@ public class GameScreen extends Screen {
 	private void manageWaveShipCollisions() {
 		Set<SwordWave> recyclable = new HashSet<>();
 		for (SwordWave wave : this.swordWaves) {
-			if (this.livesP1 > 0 && !this.ship.isDestroyed() && !this.ship.isInvincible()
-					&& checkCollision(wave, this.ship)) {
-				recyclable.add(wave);
-				this.ship.destroy();
-				this.livesP1--;
-				showHealthPopup("-1 Life (Wave Hit!)");
-				this.logger.info("Ship 1 hit by Sword Wave! " + this.livesP1 + LIVES_REMAINING_SUFFIX);
+			// P1 Collision Check
+			if (this.livesP1 > 0 && !this.ship.isDestroyed() && !this.ship.isInvincible()) {
+				if (checkCollision(wave, this.ship)) {
+					if (this.ship.isParrying()) {
+						SoundManager.play("sfx/parry.wav");
+						triggerImpactEffect(this.ship.getPositionX(), this.ship.getPositionY(), 5, 3, Color.WHITE);
+						recyclable.add(wave);
+					} else {
+						recyclable.add(wave);
+						triggerImpactEffect(this.ship.getPositionX(), this.ship.getPositionY(), 5, 3, Color.WHITE);
+						triggerExplosion(this.ship.getPositionX(), this.ship.getPositionY(), this.ship.getColor());
+						this.ship.destroy();
+						this.livesP1--;
+						showHealthPopup("-1 Life (Wave Hit!)");
+						SoundManager.play("sfx/impact.wav");
+						this.logger.info("Ship 1 hit by Sword Wave! " + this.livesP1 + LIVES_REMAINING_SUFFIX);
+						if (this.livesP1 > 0) this.ship.activateInvincibility(2000);
+					}
+				}
 			}
-			else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
-					&& !this.shipP2.isInvincible() && checkCollision(wave, this.shipP2)) {
 
-				recyclable.add(wave);
-				this.shipP2.destroy();
-				this.livesP2--;
-				showHealthPopup("-1 Life (Wave Hit!)");
-				this.logger.info("Ship 2 hit by Sword Wave! " + this.livesP2 + LIVES_REMAINING_SUFFIX);
+			// P2 Collision Check
+			if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed() && !this.shipP2.isInvincible()) {
+				if (checkCollision(wave, this.shipP2)) {
+					if (this.shipP2.isParrying()) {
+						SoundManager.play("sfx/parry.wav");
+						triggerImpactEffect(this.shipP2.getPositionX(), this.shipP2.getPositionY(), 5, 5, Color.WHITE);
+						recyclable.add(wave);
+					} else {
+						recyclable.add(wave);
+						triggerImpactEffect(this.shipP2.getPositionX(), this.shipP2.getPositionY(), 5, 5, Color.WHITE);
+						triggerExplosion(this.shipP2.getPositionX(), this.shipP2.getPositionY(), this.shipP2.getColor());
+						this.shipP2.destroy();
+						this.livesP2--;
+						showHealthPopup("-1 Life (Wave Hit!)");
+						SoundManager.play("sfx/impact.wav");
+						this.logger.info("Ship 2 hit by Sword Wave! " + this.livesP2 + LIVES_REMAINING_SUFFIX);
+						if (this.livesP2 > 0) this.shipP2.activateInvincibility(2000);
+					}
+				}
 			}
 		}
 		this.swordWaves.removeAll(recyclable);
@@ -1260,6 +1441,8 @@ public class GameScreen extends Screen {
 				if (this.shipP2 != null) {
 					this.shipP2.setMeleeMode(true);
 				}
+				this.instructionMessage = "PRESS SPACE TO PARRY!";
+				this.instructionCooldown.reset();
 				this.logger.info("Samurai Boss has spawned!");
 				break;
 			case "laserBoss":
@@ -1340,6 +1523,12 @@ public class GameScreen extends Screen {
 
 		if (this.samuraiBoss.isDestroyed()) {
 			if (!this.levelFinished) {
+				// Give points when boss is defeated.
+				int pts = this.samuraiBoss.getPointValue();
+				addPointsFor(null, pts);
+				this.coin += (pts / 10);
+				AchievementManager.getInstance().unlockAchievement("Boss Slayer");
+
 				this.ship.setMeleeMode(false);
 				if (this.shipP2 != null) this.shipP2.setMeleeMode(false);
 
@@ -1357,65 +1546,44 @@ public class GameScreen extends Screen {
 	 * Check collision with Samurai Boss.
 	 */
 	private void handleSekiroCollision(Ship playerShip, SamuraiBoss boss) {
-		if (checkCollision(playerShip, boss)) {
+		if (!checkCollision(playerShip, boss) || playerShip.isDestroyed()) {
+			return;
+		}
 
-			/**
-			 * 1. DeathBlow
-			 * When the player is attacking (isParrying) and the boss is in Broken state.
-			 */
-			if (playerShip.isParrying() && boss.isPostureBroken() && !boss.isInvincibleAfterBroken()) {
-				boss.executeDeathblow();
-				SoundManager.play("sfx/samurai-kill.wav");
-				playerShip.activateInvincibility(1500);
+		// 1. Deathblow
+		if (playerShip.isParrying() && boss.isPostureBroken() && !boss.isInvincibleAfterBroken()) {
+			boss.executeDeathblow();
+			SoundManager.play("sfx/samurai-kill.wav");
+			triggerImpactEffect(playerShip.getPositionX(), playerShip.getPositionY(), 10, 10, Color.RED);
+			playerShip.activateInvincibility(3000);
+		}
+		// 2. Parry
+		else if (playerShip.isParrying() && boss.isAttacking()) {
+			boss.onParried();
+			SoundManager.play("sfx/parry.wav");
+			triggerImpactEffect(playerShip.getPositionX(), playerShip.getPositionY(), 5, 5, Color.YELLOW);
+			triggerParryEffect(playerShip);
+		}
+		// 3. Melee attack (deal posture/health damage)
+		else if (playerShip.isParrying() && !boss.isAttacking()) {
+			boss.takeDamage(1);
+			if (!boss.isPostureBroken()) {
+				boss.takePostureDamage(boss.isEnraged() ? 10 : 20);
 			}
-			/**
-			 * 2. Parry
-			 * When the player is attacking and the boss is attacking.
-			 */
-			else if (playerShip.isParrying() && boss.isAttacking()) {
-				boss.onParried();
-				SoundManager.play("sfx/parry.wav");
-
-				// Position spark effects.
-				int centerX = playerShip.getPositionX() + (playerShip.getWidth() / 2);
-				int boundaryY = playerShip.getPositionY();
-				int sparkWidth = parrySparkEffect.getWidth();
-				int sparkHeight = parrySparkEffect.getHeight();
-				int gap = 10;
-				int spark1X = centerX - sparkWidth - (gap / 2);
-				int spark2X = centerX + (gap / 2);
-				int sparkY = boundaryY - (sparkHeight / 2);
-
-				this.parrySparkEffect.setPositionX(spark1X);
-				this.parrySparkEffect.setPositionY(sparkY);
-				this.parrySparkEffect2.setPositionX(spark2X);
-				this.parrySparkEffect2.setPositionY(sparkY);
-				this.parrySparkCooldown.reset();
+		}
+		// 4. Player Damage
+		else if (boss.isAttacking() && !playerShip.isInvincible()) {
+			triggerExplosion(playerShip.getPositionX(), playerShip.getPositionY(), playerShip.getColor());
+			playerShip.destroy();
+			SoundManager.play("sfx/impact.wav");
+			if (playerShip.getPlayerId() == 1) {
+				this.livesP1--;
+				this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
+			} else if (this.shipP2 != null) {
+				this.livesP2--;
+				this.logger.info("Hit on player ship (P2), " + this.livesP2 + LIVES_REMAINING_SUFFIX);
 			}
-
-			/**
-			 * 3. Melee attack
-			 * When the player is attacking (isParrying), and the boss is not attacking.
-			 */
-			else if (playerShip.isParrying() && !boss.isAttacking()) {
-				if(!boss.isPostureBroken()){
-					boss.takeDamage(0);
-					boss.takePostureDamage(0);
-				}
-				// SoundManager.play("sfx/sword_hit.wav");
-			}
-			/**
-			 * Player Damage
-			 * Not the above three cases, but when the boss is attacking and the player is not invincible.
-			 */
-			else if (boss.isAttacking() && !playerShip.isInvincible() && !playerShip.isDestroyed()) {
-				playerShip.destroy();
-				SoundManager.play("sfx/samurai-kill.wav");
-				if (playerShip.getPlayerId() == 1) this.livesP1--;
-				else if (this.shipP2 != null) this.livesP2--;
-				showHealthPopup("-1 Life (Boss Hit!)");
-				logger.info("Ship " + playerShip.getPlayerId() + " hit by boss!");
-			}
+			showHealthPopup("-1 Life (Boss Hit!)");
 		}
 	}
 
