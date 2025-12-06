@@ -590,7 +590,7 @@ public final class DrawManager {
 		else backBufferGraphics.setColor(Color.WHITE);
 		drawCenteredRegularString(screen, achievementsString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 2);
 
-        if (option == 9) backBufferGraphics.setColor(pulseColor);
+        if (option == 7) backBufferGraphics.setColor(pulseColor);
         else backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, settingsString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 3);
 

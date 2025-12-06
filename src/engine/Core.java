@@ -154,7 +154,12 @@ public final class Core {
                     returnCode = frame.setScreen(currentScreen);
                     LOGGER.info("Closing achievement screen.");
                     break;
-
+                case 7: // Settings Screen
+                    currentScreen = new SettingsScreen(width, height, FPS);
+                    LOGGER.info("Starting settings screen.");
+                    returnCode = frame.setScreen(currentScreen);
+                    LOGGER.info("Closing settings screen.");
+                    break;
                 case 8: // Credits
                     currentScreen = new CreditScreen(width, height, FPS);
                     LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
@@ -162,7 +167,6 @@ public final class Core {
                     returnCode = frame.setScreen(currentScreen);
                     LOGGER.info("Closing credit screen.");
                     break;
-
                 case 9: // Game Mode Selection (Classic / Sandbox)
                     GameModeSelectScreen typeScreen = new GameModeSelectScreen(width, height, FPS);
                     frame.setScreen(typeScreen);
@@ -297,11 +301,6 @@ public final class Core {
                     LOGGER.info("Closing shop screen (Sandbox).");
                     returnCode = 10; // Return to Sandbox
                     break;
-
-                // [SettingsScreen 추가 여부 결정 필요]
-                // 1번 코드 흐름상 case 9가 GameModeSelectScreen이므로 SettingsScreen은 다른 번호(예: 5, 7)를 쓰거나 제거해야 함.
-                // 여기서는 2번 코드에 있던 SettingsScreen을 일단 제외했습니다. 필요시 추가하세요.
-
                 default:
                     break;
             }
