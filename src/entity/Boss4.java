@@ -8,13 +8,14 @@ import engine.FileManager;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 import javax.imageio.ImageIO;
+import java.security.SecureRandom;
 
 public class Boss4 extends Entity implements BossEntity{
 
@@ -37,8 +38,8 @@ public class Boss4 extends Entity implements BossEntity{
     private double spiralAngle2 = 180;
 
     // Sprites for Boss4
-    private transient BufferedImage[] sprites;
-    private transient BufferedImage currentSprite;
+    private BufferedImage[] sprites;
+    private BufferedImage currentSprite;
     private int animationFrame = 0;
     // Sprite indexes
     private static final int SPRITE_IDLE = 0;
@@ -59,6 +60,7 @@ public class Boss4 extends Entity implements BossEntity{
     private static final int SPELL_CARD_DURATION = 30000; // 30 seconds
     private boolean survivedLastSpellCard = false;
     private boolean hasUsedSpellCard = false;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
 
     // Non-spell fields
@@ -68,7 +70,8 @@ public class Boss4 extends Entity implements BossEntity{
     // Movement fields
     private enum MovementState { STATIONARY, SLOW_DRIFT, MOVING_TO_POINT }
     private MovementState currentMovementState = MovementState.STATIONARY;
-    private int targetX, targetY;
+    private int targetX;
+    private int targetY;
     private int zigDirection = 1;
 
 
@@ -102,7 +105,7 @@ public class Boss4 extends Entity implements BossEntity{
             this.sprites[5] = spriteSheet.getSubimage(200, 30, 150, 200);  // Move L
             
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to load boss sprite sheet", e);
             // Fallback to placeholders if image loading fails
             this.sprites = new BufferedImage[6];
             for (int i = 0; i < 6; i++) {
@@ -157,8 +160,8 @@ public class Boss4 extends Entity implements BossEntity{
         logger.info("Boss4 activated Spell Card: " + name);
         // Set spell card movement
         this.currentMovementState = MovementState.MOVING_TO_POINT;
-        this.targetX = (int)(Math.random() * (screenWidth - this.width));
-        this.targetY = 50 + (int)(Math.random() * (screenHeight / 4));
+        this.targetX = RANDOM.nextInt(screenWidth - this.width);
+        this.targetY = 50 + RANDOM.nextInt(screenHeight / 4);
     }
 
     private void endSpellCard(boolean survived) {
@@ -227,12 +230,12 @@ public class Boss4 extends Entity implements BossEntity{
                     break;
                 case 1: // shoot2 (spiral) -> Slow drift
                     this.currentMovementState = MovementState.SLOW_DRIFT;
-                    this.zigDirection = (Math.random() > 0.5) ? 1 : -1;
+                    this.zigDirection = RANDOM.nextBoolean() ? 1 : -1;
                     break;
                 case 2: // shoot3 (rain) -> Move to a random point
                     this.currentMovementState = MovementState.MOVING_TO_POINT;
-                    this.targetX = (int)(Math.random() * (screenWidth - this.width));
-                    this.targetY = 50 + (int)(Math.random() * (screenHeight / 4));
+                    this.targetX = RANDOM.nextInt(screenWidth - this.width);
+                    this.targetY = 50 + RANDOM.nextInt(screenHeight / 4);
                     break;
             }
         }
@@ -277,8 +280,8 @@ public class Boss4 extends Entity implements BossEntity{
             // Slower movement during spell card
             moveToPoint(3);
             if (this.currentMovementState == MovementState.STATIONARY) { // If arrived, pick a new point
-                 this.targetX = (int)(Math.random() * (screenWidth - this.width));
-                 this.targetY = 50 + (int)(Math.random() * (screenHeight / 4));
+                this.targetX = RANDOM.nextInt(screenWidth - this.width);
+                this.targetY = 50 + RANDOM.nextInt(screenHeight / 4);
                  this.currentMovementState = MovementState.MOVING_TO_POINT;
             }
             return;
@@ -306,7 +309,7 @@ public class Boss4 extends Entity implements BossEntity{
             return;
         }
 
-        double angle = Math.atan2(this.targetY - this.positionY, this.targetX - this.positionX);
+        double angle = Math.atan2(this.targetY - (double)this.positionY, this.targetX - (double)this.positionX);
         this.positionX += (int)(Math.cos(angle) * speed);
         this.positionY += (int)(Math.sin(angle) * speed);
     }
@@ -398,8 +401,8 @@ public class Boss4 extends Entity implements BossEntity{
             this.shootCooldown3.reset();
             int bulletCount = 7; // Adjusted
             for (int i = 0; i < bulletCount; i++) {
-                int randomX = (int) (Math.random() * screenWidth);
-                int speedX = (int) (Math.random() * 3) - 1;
+               int randomX = RANDOM.nextInt(screenWidth);
+               int speedX = RANDOM.nextInt(3) - 1;
                 BossBullet bullet = new BossBullet(randomX, 1, speedX, 3, 6, 10, Color.GREEN);
                 bullets.add(bullet);
             }
@@ -433,8 +436,8 @@ public class Boss4 extends Entity implements BossEntity{
         // Aimed FAN of bullets
         if (playerShip != null && this.aimedShotCooldown.checkFinished()) {
             this.aimedShotCooldown.reset();
-            double angleToPlayer = Math.atan2(playerShip.getPositionY() - (this.positionY + this.height / 2),
-                                              playerShip.getPositionX() - (this.positionX + this.width / 2));
+            double angleToPlayer = Math.atan2(playerShip.getPositionY() - (this.positionY + (double)this.height / 2),
+                                              playerShip.getPositionX() - (this.positionX + (double)this.width / 2));
             
             int fanBullets = 3; // 3-shot fan
             double spread = Math.toRadians(20); // 20 degree spread

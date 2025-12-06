@@ -1,12 +1,14 @@
 package engine;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.awt.event.KeyEvent;
 
 import entity.Entity;
 import entity.FinalBoss;
@@ -16,6 +18,7 @@ import engine.Achievement;
 import screen.CreditScreen;
 import screen.GameScreen;
 import screen.Screen;
+import screen.SettingsScreen;
 import engine.Score;
 import screen.TitleScreen;
 import screen.TitleScreen.Star;
@@ -317,8 +320,8 @@ public final class DrawManager {
 
 		int cx = x + w / 2;
 		int cy = y + h / 2;
-		int rx = (int) (w / 2 + radiusGrow);
-		int ry = (int) (h / 2 + radiusGrow);
+		int rx = (int) ((double)w / 2 + radiusGrow);
+		int ry = (int) ((double)h / 2 + radiusGrow);
 
 		g2.setColor(new Color(255, 180, 120, (int) (60 * a)));
 		g2.setStroke(new BasicStroke(6f));
@@ -567,6 +570,7 @@ public final class DrawManager {
 		String playString = "Play";
 		String highScoresString = "High scores";
 		String achievementsString = "Achievements";
+        String settingsString = "Settings";
 		String shopString = "Shop";
 		String exitString = "Exit";
 
@@ -586,14 +590,178 @@ public final class DrawManager {
 		else backBufferGraphics.setColor(Color.WHITE);
 		drawCenteredRegularString(screen, achievementsString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 2);
 
+        if (option == 9) backBufferGraphics.setColor(pulseColor);
+        else backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, settingsString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 3);
+
 		if (option == 4) backBufferGraphics.setColor(pulseColor);
 		else backBufferGraphics.setColor(Color.WHITE);
-		drawCenteredRegularString(screen, shopString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 3);
+		drawCenteredRegularString(screen, shopString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 4);
 
 		if (option == 0) backBufferGraphics.setColor(pulseColor);
 		else backBufferGraphics.setColor(Color.WHITE);
-		drawCenteredRegularString(screen, exitString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 4);
+		drawCenteredRegularString(screen, exitString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 5);
 	}
+
+	public void drawModernSettings(final SettingsScreen screen, final SettingsScreen.EScreenState screenState, final int mainSelection, final int keyBindingSelection, final GameSettingsManager settingsManager, final boolean isRebinding, final int currentPlayer) {
+		// Enable anti-aliasing for smoother graphics
+		Graphics2D g2d = (Graphics2D) backBufferGraphics;
+		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+	
+		// Draw Title
+		backBufferGraphics.setColor(Color.GREEN);
+		drawCenteredBigString(screen, "Settings", screen.getHeight() / 8);
+	
+		// Draw main menu items
+		String[] mainMenuItems = screen.getMainMenuItems();
+		int initialY = screen.getHeight() / 4;
+		int yStep = 60; // Increased step for more space overall
+		int extraSpaceAfterVolume = 30; // The specific gap
+	
+		for (int i = 0; i < mainMenuItems.length; i++) {
+			int currentY = initialY + i * yStep;
+			if (i >= 1) { // Apply space for items after "Volume"
+				currentY += extraSpaceAfterVolume;
+			}
+			
+			boolean isSelected = (i == mainSelection);
+			Color color = isSelected ? Color.GREEN : Color.WHITE;
+			
+			if (isSelected && screenState == SettingsScreen.EScreenState.MAIN_SELECTION) {
+				float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
+				color = new Color(0, 0.5f + pulse * 0.5f, 0);
+			}
+			
+			backBufferGraphics.setColor(color);
+			backBufferGraphics.setFont(fontBig);
+			// Center align the text as requested
+			drawCenteredBigString(screen, mainMenuItems[i], currentY);
+	
+			if (i == 0) { // Volume
+				// The volume slider is now drawn below the text
+				drawVolumeSlider(screen, settingsManager.getVolume(), currentY, isSelected || screenState == SettingsScreen.EScreenState.VOLUME_ADJUST);
+			}
+		}
+	
+		// Handle sub-menus (Key Bindings)
+		if (screenState == SettingsScreen.EScreenState.KEY_BINDINGS) {
+			drawDimOverlay(screen);
+			drawKeyBindingPanel(screen, keyBindingSelection, settingsManager, isRebinding, currentPlayer, screen.getKeyBindingActions());
+		}
+	
+		if (isRebinding) {
+			drawRebindingOverlay(screen);
+		}
+		
+		// Draw footer instructions
+		drawFooterInstructions(screen, screenState);
+	}
+	
+	private void drawVolumeSlider(final Screen screen, float volume, int y, boolean isActive) {
+		int barWidth = 150;
+		int barHeight = 8;
+		int barX = screen.getWidth() / 2 - barWidth / 2; // Centered
+		int barY = y + 30; // Positioned below the "Volume" text
+		
+		// Draw bar background
+		backBufferGraphics.setColor(Color.DARK_GRAY);
+		backBufferGraphics.fillRoundRect(barX, barY, barWidth, barHeight, 8, 8);
+	
+		// Draw filled portion of the bar
+		backBufferGraphics.setColor(isActive ? Color.GREEN : new Color(0, 150, 0));
+		backBufferGraphics.fillRoundRect(barX, barY, (int) (barWidth * volume), barHeight, 8, 8);
+	
+		// Draw knob
+		int knobSize = 16;
+		int knobX = barX + (int) (barWidth * volume) - knobSize / 2;
+		int knobY = barY + barHeight / 2 - knobSize / 2;
+		backBufferGraphics.setColor(isActive ? Color.WHITE : Color.LIGHT_GRAY);
+		backBufferGraphics.fillOval(knobX, knobY, knobSize, knobSize);
+	
+		// Draw percentage
+		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.setColor(isActive ? Color.WHITE : Color.GRAY);
+		String volPercent = String.format("%d%%", (int) (volume * 100));
+		// Position percentage above the bar
+		backBufferGraphics.drawString(volPercent, barX + barWidth / 2 - fontRegularMetrics.stringWidth(volPercent) / 2, barY - 10);
+	}
+	
+	private void drawKeyBindingPanel(final Screen screen, final int selection, final GameSettingsManager settingsManager, final boolean isRebinding, final int player, final String[] actions) {
+		int panelWidth = 380;
+		int panelHeight = 280;
+		int panelX = (screen.getWidth() - panelWidth) / 2;
+		int panelY = (screen.getHeight() - panelHeight) / 2;
+	
+		// Draw panel background
+		backBufferGraphics.setColor(new Color(20, 20, 30, 240));
+		backBufferGraphics.fillRoundRect(panelX, panelY, panelWidth, panelHeight, 15, 15);
+		backBufferGraphics.setColor(Color.GREEN);
+		backBufferGraphics.drawRoundRect(panelX, panelY, panelWidth, panelHeight, 15, 15);
+	
+		// Panel Title
+		backBufferGraphics.setFont(fontBig);
+		String title = "Player " + player + " Controls";
+		int titleWidth = fontBigMetrics.stringWidth(title);
+		backBufferGraphics.drawString(title, panelX + (panelWidth - titleWidth) / 2, panelY + 40);
+	
+		// Draw key bindings list
+		int listY = panelY + 80;
+		int yStep = 35;
+		backBufferGraphics.setFont(fontRegular);
+	
+		for (int i = 0; i < actions.length; i++) {
+			boolean isSelected = (i == selection);
+			Color color = isSelected ? Color.GREEN : Color.WHITE;
+			
+			if (isSelected) {
+				float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
+				color = new Color(0.5f, 0.8f + pulse * 0.2f, 0.5f);
+			}
+	
+			backBufferGraphics.setColor(color);
+			String action = actions[i];
+			String key = (player == 1) ? KeyEvent.getKeyText(settingsManager.getKey(action)) : KeyEvent.getKeyText(settingsManager.getKeyP2(action));
+			
+			backBufferGraphics.drawString(action, panelX + 40, listY + i * yStep);
+			backBufferGraphics.drawString(key, panelX + panelWidth - 100, listY + i * yStep);
+		}
+	}
+	
+	private void drawRebindingOverlay(final Screen screen) {
+		drawDimOverlay(screen);
+		backBufferGraphics.setFont(fontBig);
+		backBufferGraphics.setColor(Color.YELLOW);
+		drawCenteredBigString(screen, "Press any key to bind...", screen.getHeight() / 2);
+	}
+	
+	private void drawDimOverlay(final Screen screen) {
+		backBufferGraphics.setColor(new Color(0, 0, 0, 180));
+		backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight()); 
+	}
+	
+	private void drawFooterInstructions(final Screen screen, final screen.SettingsScreen.EScreenState state) {
+		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.setColor(Color.GRAY);
+		String instructions = "";
+		switch (state) {
+			case MAIN_SELECTION:
+				instructions = "UP/DOWN: Navigate | SHOOT: Select";
+				break;
+			case VOLUME_ADJUST:
+				instructions = "LEFT/RIGHT: Adjust Volume | SHOOT/ESC: Back";
+				break;
+			case KEY_BINDINGS:
+				instructions = "UP/DOWN: Navigate | SHOOT: Rebind | ESC: Back";
+				break;
+		}
+		drawCenteredRegularString(screen, instructions, screen.getHeight() - 30);
+	}
+
+    // Helper method to draw a centered string within a given width
+    private void drawCenteredRegularString(final Screen screen, final String string, final int height, final int startX, final int width) {
+        backBufferGraphics.setFont(fontRegular);
+        backBufferGraphics.drawString(string, startX + width / 2 - fontRegularMetrics.stringWidth(string) / 2, height);
+    }
 
 	/**
 	 * Draws game results.

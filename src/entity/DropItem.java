@@ -2,7 +2,7 @@ package entity;
 import java.awt.Color;
 
 import engine.DrawManager.SpriteType;
-import java.util.Random;
+import java.security.SecureRandom;
 
 public class DropItem extends Entity {
     public enum ItemType {
@@ -20,7 +20,7 @@ public class DropItem extends Entity {
         }
 
         private static final ItemType[] VALUES = values();
-        private static final Random RANDOM = new Random();
+        private static final SecureRandom RANDOM = new SecureRandom();
         private static final int TOTAL_WEIGHT;
 
         static {

@@ -1,7 +1,5 @@
 package engine;
 
-import java.awt.*;
-
 public class LaserBeam {
     private float originX;
     private float originY;
@@ -9,7 +7,7 @@ public class LaserBeam {
     private float length;
     private float thickness;
 
-    private long StartTime;
+    private long startTime;
     private long durationMs;
     private boolean expired = false;
     public LaserBeam(float originX, float originY,
@@ -22,7 +20,7 @@ public class LaserBeam {
         this.thickness = thickness;
         this.durationMs = durationMs;
 
-        this.StartTime = System.currentTimeMillis();
+        this.startTime = System.currentTimeMillis();
     }
 
     public boolean isExpired() {
@@ -31,13 +29,13 @@ public class LaserBeam {
 
 
     public void update() {
-        long elapsed = System.currentTimeMillis() - StartTime;
+        long elapsed = System.currentTimeMillis() - startTime;
         if (elapsed > durationMs) {
             expired = true;
         }
     }
     public float getAlphaFactor() {
-        long elapsed = System.currentTimeMillis() - StartTime;
+        long elapsed = System.currentTimeMillis() - startTime;
         return Math.max(0f, 1f - (float)elapsed / durationMs);
     }
     public float getOriginX() { return originX; }

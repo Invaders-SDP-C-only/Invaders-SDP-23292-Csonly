@@ -42,6 +42,14 @@ public class GameScreen extends Screen {
 	private static final int SEPARATION_LINE_HEIGHT = 45;
 	/** Height of the items separation line (above items). */
 	private static final int ITEMS_SEPARATION_LINE_HEIGHT = 400;
+	/** Popup text shown on boss collisions. */
+	private static final String BOSS_COLLISION_HEALTH_POPUP = "-1 Life (Boss Collision!)";
+	/** Popup text shown on standard health loss. */
+	private static final String GENERIC_HEALTH_POPUP = "-1 Health";
+	/** Log suffix indicating lives left. */
+	private static final String LIVES_REMAINING_SUFFIX = " lives remaining.";
+	/** Log prefix for generic player hit. */
+	private static final String HIT_ON_PLAYER_PREFIX = "Hit on player ship, ";
 
 	/** Returns the Y-coordinate of the bottom boundary for enemies (above items HUD) */
 	public static int getItemsSeparationLineHeight() {
@@ -76,7 +84,7 @@ public class GameScreen extends Screen {
 	/** OmegaBoss */
 	private MidBoss omegaBoss;
 	/** SamuraiBoss */
-	private SamuraiBoss SamuraiBoss;
+	private SamuraiBoss samuraiBoss;
 	/** boss4 */
 	private Boss4 boss4;
 	/** SamuraiBoss Sword wave pattern. */
@@ -259,7 +267,7 @@ public class GameScreen extends Screen {
 		this.finalBoss = null;
 		this.finalBoss3 = null;
 		this.omegaBoss = null;
-		this.SamuraiBoss = null;
+		this.samuraiBoss = null;
 		this.boss4 = null;
 		this.currentPhase = StagePhase.wave;
 
@@ -329,11 +337,11 @@ public class GameScreen extends Screen {
 			this.elapsedTime = this.recordedTime + (this.gameTimer.isRunning() ? this.gameTimer.getElapsedTime() : 0);
 
 			if (this.livesP1 > 0 && !this.ship.isDestroyed()) {
-				boolean p1Right = inputManager.isP1KeyDown(KeyEvent.VK_D);
-				boolean p1Left = inputManager.isP1KeyDown(KeyEvent.VK_A);
-				boolean p1Up = inputManager.isP1KeyDown(KeyEvent.VK_W);
-				boolean p1Down = inputManager.isP1KeyDown(KeyEvent.VK_S);
-				boolean p1Fire = inputManager.isP1KeyDown(KeyEvent.VK_SPACE);
+				boolean p1Right = inputManager.isActionPressed("RIGHT");
+				boolean p1Left = inputManager.isActionPressed("LEFT");
+				boolean p1Up = inputManager.isActionPressed("UP");
+				boolean p1Down = inputManager.isActionPressed("DOWN");
+				boolean p1Fire = inputManager.isActionPressed("SHOOT");
 
 				boolean isRightBorder = this.ship.getPositionX()
 						+ this.ship.getWidth() + this.ship.getSpeed() > this.width - 1;
@@ -356,11 +364,11 @@ public class GameScreen extends Screen {
 			}
 
 			if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()) {
-				boolean p2Right = inputManager.isP2KeyDown(KeyEvent.VK_RIGHT);
-				boolean p2Left = inputManager.isP2KeyDown(KeyEvent.VK_LEFT);
-				boolean p2Up = inputManager.isP2KeyDown(KeyEvent.VK_UP);
-				boolean p2Down = inputManager.isP2KeyDown(KeyEvent.VK_DOWN);
-				boolean p2Fire = inputManager.isP2KeyDown(KeyEvent.VK_ENTER);
+				boolean p2Right = inputManager.isActionPressedP2("RIGHT");
+				boolean p2Left = inputManager.isActionPressedP2("LEFT");
+				boolean p2Up = inputManager.isActionPressedP2("UP");
+				boolean p2Down = inputManager.isActionPressedP2("DOWN");
+				boolean p2Fire = inputManager.isActionPressedP2("SHOOT");
 
 				boolean p2RightBorder = this.shipP2.getPositionX()
 						+ this.shipP2.getWidth() + this.shipP2.getSpeed() > this.width - 1;
@@ -393,7 +401,7 @@ public class GameScreen extends Screen {
 					}
 					break;
 				case boss_wave:
-					if (this.finalBoss == null && this.omegaBoss == null && this.SamuraiBoss == null && this.finalBoss3 == null && this.boss4 == null) {
+					if (this.finalBoss == null && this.omegaBoss == null && this.samuraiBoss == null && this.finalBoss3 == null && this.boss4 == null) {
 						bossReveal();
 						this.enemyShipFormation.clear();
 					}
@@ -415,7 +423,7 @@ public class GameScreen extends Screen {
 								this.screenFinishedCooldown.reset();
 							}
 						}
-					} else if (this.SamuraiBoss != null) {
+					} else if (this.samuraiBoss != null) {
 						// Samurai boss handled in its manager later
 					} else if (this.finalBoss3 != null) {
 						// already handled
@@ -437,7 +445,7 @@ public class GameScreen extends Screen {
 			}
 
 			// Samurai boss manager
-			if (this.SamuraiBoss != null) {
+			if (this.samuraiBoss != null) {
 				sekiroBossManage();
 			}
 
@@ -464,7 +472,7 @@ public class GameScreen extends Screen {
 				if (!this.ship.isInvincible()) {
 					this.ship.destroy();
 					this.livesP1--;
-					showHealthPopup("-1 Health");
+					showHealthPopup(GENERIC_HEALTH_POPUP);
 					this.logger.info("Player hit by LaserBeam!");
 				}
 			}
@@ -476,7 +484,7 @@ public class GameScreen extends Screen {
 				if (!this.shipP2.isInvincible()) {
 					this.shipP2.destroy();
 					this.livesP2--;
-					showHealthPopup("-1 Health");
+					showHealthPopup(GENERIC_HEALTH_POPUP);
 					this.logger.info("Player2 hit by LaserBeam!");
 				}
 			}
@@ -555,17 +563,17 @@ public class GameScreen extends Screen {
 			}
 		}
 
-		if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-			drawManager.drawEntity(this.SamuraiBoss, this.SamuraiBoss.getPositionX(), this.SamuraiBoss.getPositionY());
+		if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+			drawManager.drawEntity(this.samuraiBoss, this.samuraiBoss.getPositionX(), this.samuraiBoss.getPositionY());
 			// Draws Health / Posture bar in screen.
-			drawManager.drawBossHealthBar(this, this.SamuraiBoss.getHealPoint(), this.SamuraiBoss.getMaxHealth());
-			drawManager.drawBossPostureBar(this, this.SamuraiBoss.getPosture(), this.SamuraiBoss.getMaxPosture());
+			drawManager.drawBossHealthBar(this, this.samuraiBoss.getHealPoint(), this.samuraiBoss.getMaxHealth());
+			drawManager.drawBossPostureBar(this, this.samuraiBoss.getPosture(), this.samuraiBoss.getMaxPosture());
 
 			// Draws death marker on samurai boss.
-			if (this.SamuraiBoss.isPostureBroken()) {
+			if (this.samuraiBoss.isPostureBroken()) {
 				drawManager.drawDeathblowMarker(this,
-						this.SamuraiBoss.getPositionX() + (this.SamuraiBoss.getWidth() / 2),
-						this.SamuraiBoss.getPositionY() + (this.SamuraiBoss.getWidth() / 2));
+						this.samuraiBoss.getPositionX() + (this.samuraiBoss.getWidth() / 2),
+						this.samuraiBoss.getPositionY() + (this.samuraiBoss.getWidth() / 2));
 			}
 			// Draws parry spark effect.
 			if (!this.parrySparkCooldown.checkFinished()) {
@@ -726,7 +734,7 @@ public class GameScreen extends Screen {
 	 * Cleans sword waves that go off screen.
 	 */
 	private void cleanSwordWaves() {
-		Set<SwordWave> recyclable = new HashSet<SwordWave>();
+		Set<SwordWave> recyclable = new HashSet<>();
 		for (SwordWave wave : this.swordWaves) {
 			wave.update();
 			if (wave.getPositionY() < SEPARATION_LINE_HEIGHT
@@ -749,9 +757,9 @@ public class GameScreen extends Screen {
 						if (!this.ship.isDestroyed()) {
 							this.ship.destroy();
 							this.livesP1--;
-							showHealthPopup("-1 Health");
-							this.logger.info("Hit on player ship, " + this.livesP1
-									+ " lives remaining.");
+							showHealthPopup(GENERIC_HEALTH_POPUP);
+							this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1
+									+ LIVES_REMAINING_SUFFIX);
 						}
 					}
 				} else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
@@ -762,9 +770,9 @@ public class GameScreen extends Screen {
 						if (!this.shipP2.isDestroyed()) {
 							this.shipP2.destroy();
 							this.livesP2--;
-							showHealthPopup("-1 Health");
-							this.logger.info("Hit on player ship, " + this.livesP2
-									+ " lives remaining.");
+							showHealthPopup(GENERIC_HEALTH_POPUP);
+							this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP2
+									+ LIVES_REMAINING_SUFFIX);
 						}
 					}
 				}
@@ -858,8 +866,8 @@ public class GameScreen extends Screen {
 					}
 				}
 				/** Samurai boss is bullet immunity.*/
-				if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()
-						&& checkCollision(bullet, this.SamuraiBoss)) {
+				if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()
+						&& checkCollision(bullet, this.samuraiBoss)) {
 					recyclable.add(bullet);
 				}
 
@@ -893,7 +901,7 @@ public class GameScreen extends Screen {
 					this.livesP1--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship collided with enemy! " + this.livesP1
-							+ " lives remaining.");
+							+ LIVES_REMAINING_SUFFIX);
 					return;
 				}
 			}
@@ -907,12 +915,12 @@ public class GameScreen extends Screen {
 					this.livesP1--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship collided with special enemy formation! "
-							+ this.livesP1 + " lives remaining.");
+							+ this.livesP1 + LIVES_REMAINING_SUFFIX);
 					return;
 				}
 
-				if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-					handleSekiroCollision(this.ship, this.SamuraiBoss);
+				if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+					handleSekiroCollision(this.ship, this.samuraiBoss);
 				}
 			}
 
@@ -921,9 +929,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.ship, this.omegaBoss)) {
 				this.ship.destroy();
 				this.livesP1--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship collided with omega boss! " + this.livesP1
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -932,9 +940,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.ship, this.finalBoss)) {
 				this.ship.destroy();
 				this.livesP1--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship collided with final boss! " + this.livesP1
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -943,14 +951,14 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.ship, this.boss4)) {
 				this.ship.destroy();
 				this.livesP1--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship collided with boss4! " + this.livesP1
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
-			if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-				handleSekiroCollision(this.ship, this.SamuraiBoss);
+			if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+				handleSekiroCollision(this.ship, this.samuraiBoss);
 			}
 		}
 
@@ -965,7 +973,7 @@ public class GameScreen extends Screen {
 					this.livesP2--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship P2 collided with enemy! " + this.livesP2
-							+ " lives remaining.");
+							+ LIVES_REMAINING_SUFFIX);
 					return;
 				}
 			}
@@ -979,7 +987,7 @@ public class GameScreen extends Screen {
 					this.livesP2--;
 					showHealthPopup("-1 Life (Collision!)");
 					this.logger.info("Ship P2 collided with special enemy formation! "
-							+ this.livesP2 + " lives remaining.");
+							+ this.livesP2 + LIVES_REMAINING_SUFFIX);
 					return;
 				}
 			}
@@ -989,9 +997,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.shipP2, this.omegaBoss)) {
 				this.shipP2.destroy();
 				this.livesP2--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship P2 collided with omega boss! " + this.livesP2
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -1000,9 +1008,9 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.shipP2, this.finalBoss)) {
 				this.shipP2.destroy();
 				this.livesP2--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship P2 collided with final boss! " + this.livesP2
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
@@ -1011,15 +1019,15 @@ public class GameScreen extends Screen {
 					&& checkCollision(this.shipP2, this.boss4)) {
 				this.shipP2.destroy();
 				this.livesP2--;
-				showHealthPopup("-1 Life (Boss Collision!)");
+				showHealthPopup(BOSS_COLLISION_HEALTH_POPUP);
 				this.logger.info("Ship P2 collided with boss4! " + this.livesP2
-						+ " lives remaining.");
+						+ LIVES_REMAINING_SUFFIX);
 				return;
 			}
 
 			// Check collision with Samurai boss
-			if (this.SamuraiBoss != null && !this.SamuraiBoss.isDestroyed()) {
-				handleSekiroCollision(this.shipP2, this.SamuraiBoss);
+			if (this.samuraiBoss != null && !this.samuraiBoss.isDestroyed()) {
+				handleSekiroCollision(this.shipP2, this.samuraiBoss);
 			}
 		}
 	}
@@ -1036,7 +1044,7 @@ public class GameScreen extends Screen {
 				this.ship.destroy();
 				this.livesP1--;
 				showHealthPopup("-1 Life (Wave Hit!)");
-				this.logger.info("Ship 1 hit by Sword Wave! " + this.livesP1 + " lives remaining.");
+				this.logger.info("Ship 1 hit by Sword Wave! " + this.livesP1 + LIVES_REMAINING_SUFFIX);
 			}
 			else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
 					&& !this.shipP2.isInvincible() && checkCollision(wave, this.shipP2)) {
@@ -1045,7 +1053,7 @@ public class GameScreen extends Screen {
 				this.shipP2.destroy();
 				this.livesP2--;
 				showHealthPopup("-1 Life (Wave Hit!)");
-				this.logger.info("Ship 2 hit by Sword Wave! " + this.livesP2 + " lives remaining.");
+				this.logger.info("Ship 2 hit by Sword Wave! " + this.livesP2 + LIVES_REMAINING_SUFFIX);
 			}
 		}
 		this.swordWaves.removeAll(recyclable);
@@ -1246,8 +1254,8 @@ public class GameScreen extends Screen {
 				this.logger.info("Omega Boss has spawned!");
 				break;
 			case "SamuraiBoss":
-				this.SamuraiBoss = new SamuraiBoss(this.width / 2, 100, this.width, this.ship, this.shipP2, ITEMS_SEPARATION_LINE_HEIGHT);
-				this.SamuraiBoss.attach(this);
+				this.samuraiBoss = new SamuraiBoss(this.width / 2, 100, this.width, this.ship, this.shipP2, ITEMS_SEPARATION_LINE_HEIGHT);
+				this.samuraiBoss.attach(this);
 				this.ship.setMeleeMode(true);
 				if (this.shipP2 != null) {
 					this.shipP2.setMeleeMode(true);
@@ -1302,14 +1310,14 @@ public class GameScreen extends Screen {
 					if (!this.ship.isDestroyed()) {
 						this.ship.destroy();
 						this.livesP1--;
-						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				} else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed() && this.checkCollision(b, this.shipP2)) {
 					if (!this.shipP2.isDestroyed()) {
 						this.shipP2.destroy();
 						this.livesP2--;
-						this.logger.info("Hit on player ship, " + this.livesP2 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP2 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
@@ -1328,9 +1336,9 @@ public class GameScreen extends Screen {
 	 * Manages the Samurai Boss's state and updates.
 	 */
 	private void sekiroBossManage() {
-		if (this.SamuraiBoss == null) return;
+		if (this.samuraiBoss == null) return;
 
-		if (this.SamuraiBoss.isDestroyed()) {
+		if (this.samuraiBoss.isDestroyed()) {
 			if (!this.levelFinished) {
 				this.ship.setMeleeMode(false);
 				if (this.shipP2 != null) this.shipP2.setMeleeMode(false);
@@ -1341,8 +1349,8 @@ public class GameScreen extends Screen {
 			return;
 		}
 
-		this.SamuraiBoss.update();
-		this.swordWaves.addAll(this.SamuraiBoss.shootWave());
+		this.samuraiBoss.update();
+		this.swordWaves.addAll(this.samuraiBoss.shootWave());
 	}
 
 	/**
@@ -1359,7 +1367,6 @@ public class GameScreen extends Screen {
 				boss.executeDeathblow();
 				SoundManager.play("sfx/samurai-kill.wav");
 				playerShip.activateInvincibility(1500);
-				return;
 			}
 			/**
 			 * 2. Parry
@@ -1384,7 +1391,6 @@ public class GameScreen extends Screen {
 				this.parrySparkEffect2.setPositionX(spark2X);
 				this.parrySparkEffect2.setPositionY(sparkY);
 				this.parrySparkCooldown.reset();
-				return;
 			}
 
 			/**
@@ -1397,7 +1403,6 @@ public class GameScreen extends Screen {
 					boss.takePostureDamage(0);
 				}
 				// SoundManager.play("sfx/sword_hit.wav");
-				return;
 			}
 			/**
 			 * Player Damage
@@ -1410,7 +1415,6 @@ public class GameScreen extends Screen {
 				else if (this.shipP2 != null) this.livesP2--;
 				showHealthPopup("-1 Life (Boss Hit!)");
 				logger.info("Ship " + playerShip.getPlayerId() + " hit by boss!");
-				return;
 			}
 		}
 	}
@@ -1470,16 +1474,15 @@ public class GameScreen extends Screen {
 					if (!this.ship.isDestroyed()) {
 						this.ship.destroy();
 						this.livesP1--;
-						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
-				// Check P2 Collision
 				else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed() && this.checkCollision(b, this.shipP2)) {
 					if (!this.shipP2.isDestroyed()) {
 						this.shipP2.destroy();
 						this.livesP2--;
-						this.logger.info("Hit on player ship, " + this.livesP2 + " lives remaining.");
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP2 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}
@@ -1516,12 +1519,12 @@ public class GameScreen extends Screen {
 				// Check P1 Collision
 				if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
 						&& this.checkCollision(b, this.ship)) {
-
+					// P1 충돌
 					if (!this.ship.isInvincible()) {
 						this.ship.destroy();
 						this.livesP1--;
-						showHealthPopup("-1 Health");
-						this.logger.info("Hit on player ship, " + this.livesP1 + " lives remaining.");
+						showHealthPopup(GENERIC_HEALTH_POPUP);
+						this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 					continue;
@@ -1530,12 +1533,12 @@ public class GameScreen extends Screen {
 				// Check P2 Collision
 				if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
 						&& this.checkCollision(b, this.shipP2)) {
-
+					// P2 충돌
 					if (!this.shipP2.isInvincible()) {
 						this.shipP2.destroy();
 						this.livesP2--;
-						showHealthPopup("-1 Health");
-						this.logger.info("Hit on player ship (P2), " + this.livesP2 + " lives remaining.");
+						showHealthPopup(GENERIC_HEALTH_POPUP);
+						this.logger.info("Hit on player ship (P2), " + this.livesP2 + LIVES_REMAINING_SUFFIX);
 					}
 					bulletsToRemove.add(b);
 				}

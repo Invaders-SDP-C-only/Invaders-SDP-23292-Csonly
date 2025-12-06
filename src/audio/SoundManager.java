@@ -10,9 +10,48 @@ public class SoundManager {
     private static final Map<String, Clip> CACHE = new ConcurrentHashMap<>();
     private static volatile boolean muted = false;  // global state of sound
     private static volatile String currentLooping = null;
+    private static float volume = 0.5f;
+
+    public static void setVolume(float vol) {
+        if (vol < 0.0f) vol = 0.0f;
+        if (vol > 1.0f) vol = 1.0f;
+        volume = vol;
+        updateAllVolumes();
+    }
+
+    public static float getVolume() {
+        return volume;
+    }
+
+    private static void updateAllVolumes() {
+        for (Clip c : CACHE.values()) {
+            setClipVolume(c);
+        }
+    }
+
+    private static void setClipVolume(Clip clip) {
+        if (clip == null) return;
+        try {
+            FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+            if (volume == 0.0f) {
+                gainControl.setValue(gainControl.getMinimum());
+            } else {
+                float range = gainControl.getMaximum() - gainControl.getMinimum();
+                float gain = (range * volume) + gainControl.getMinimum();
+                // Some safety margin
+                if (gain > gainControl.getMaximum()) {
+                    gain = gainControl.getMaximum();
+                }
+                gainControl.setValue(gain);
+            }
+        } catch (IllegalArgumentException e) {
+            // This can happen if the control is not supported.
+            // System.err.println("[Sound] Volume control not supported for a clip.");
+        }
+    }
 
     public static void play(String resourcePath) {
-        if (muted) return;  // no sound played
+        if (muted || volume == 0.0f) return;
         try {
             Clip c = CACHE.computeIfAbsent(resourcePath, SoundManager::loadClip);
             if (c == null) return;
@@ -32,6 +71,7 @@ public class SoundManager {
                  AudioInputStream ais = AudioSystem.getAudioInputStream(in)) {
                 Clip clip = AudioSystem.getClip();
                 clip.open(ais);
+                setClipVolume(clip); // Set volume on load
                 return clip;
             }
         } catch (Exception e) {
@@ -42,7 +82,7 @@ public class SoundManager {
 
 
     public static void playLoop(String resourcePath) {
-        if (muted) return;  // no sound played
+        if (muted || volume == 0.0f) return;
         try {
             Clip c = CACHE.computeIfAbsent(resourcePath, SoundManager::loadClip);
             if (c == null) return;
@@ -50,7 +90,7 @@ public class SoundManager {
             c.setFramePosition(0);
             c.loop(Clip.LOOP_CONTINUOUSLY);
             c.start();
-            currentLooping = resourcePath;  // useful for unmute
+            currentLooping = resourcePath;
         } catch (Exception e) {
             System.err.println("[Sound] Loop failed: " + resourcePath + " -> " + e.getMessage());
         }

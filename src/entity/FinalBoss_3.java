@@ -4,17 +4,20 @@ import audio.SoundManager;
 import engine.*;
 
 import java.awt.Color;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.List;
 import java.util.ArrayList;
 public class FinalBoss_3 extends Entity implements BossEntity {
 
+    private SecureRandom random;
     private int healPoint;
     private int maxHP;
     private int pointValue;
     private boolean destroyed = false;
 
-    private int screenWidth, screenHeight;
+    private int screenWidth;
+    private int screenHeight;
 
     private int moveDirX = 1;
     private int moveDirY = 1;
@@ -38,7 +41,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     private boolean bossWaveActive = false;
     private boolean wave20Triggered = false;
     private boolean wave5Triggered = false;
-    private long bossWaveStartTime = 0;
+    //private long bossWaveStartTime = 0;
     private float bossWaveAngularSpeedDegPhase1 = -22f; // 시계 방향(음수)
     private float bossWaveAngularSpeedDegPhase2 = -26f; // 2번째 웨이브에서 조금 더 빠르게
     private float bossWaveAngularSpeedDeg = -22f;
@@ -53,8 +56,8 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     private boolean bossWavePreAlert = false;
     private long bossWavePreAlertStart = 0;
     private long bossWavePreAlertMs = 1500;
-    private int bossWaveTargetX;
-    private int bossWaveTargetY;
+    //private int bossWaveTargetX;
+    //private int bossWaveTargetY;
     private Cooldown bossWaveFireCooldown;
     private int bossWaveBeamDurationMs = 1800;
     private long bossWaveTransitionStartTime = 0;
@@ -69,7 +72,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     }
 
     public float getWarningOriginY() {
-        return this.positionY + this.height;
+        return this.positionY + (float)this.height;
     }
 
     public FinalBoss_3(int x, int y, int screenWidth, int screenHeight, LaserBeamManager laserBeamManager) {
@@ -77,6 +80,8 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
+
+        this.random = new SecureRandom();
 
         this.maxHP = 100;
         this.healPoint = this.maxHP;
@@ -136,7 +141,6 @@ public class FinalBoss_3 extends Entity implements BossEntity {
                         fireLaser(angle, false);
                     }
                     pendingWarningAngles.clear();
-                    return;
                 } else {
                     for (float angle : pendingWarningAngles) {
                         fireLaser(angle, false);
@@ -165,8 +169,8 @@ public class FinalBoss_3 extends Entity implements BossEntity {
     private boolean moveToCenter() {
         int targetX = (screenWidth - width) / 2;
         int targetY = (screenHeight - height) / 2 - 50; // slightly above center
-        bossWaveTargetX = targetX;
-        bossWaveTargetY = targetY;
+        //bossWaveTargetX = targetX;
+        //bossWaveTargetY = targetY;
 
         int speed = 5; // slightly slower approach to center
         if (positionX < targetX) positionX = Math.min(positionX + speed, targetX);
@@ -183,7 +187,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         bossWaveAngularSpeedDeg = (bossWaveCount >= 2) ? bossWaveAngularSpeedDegPhase2 : bossWaveAngularSpeedDegPhase1;
         bossWaveTransition = false;
         bossWaveActive = true;
-        bossWaveStartTime = System.currentTimeMillis();
+        //bossWaveStartTime = System.currentTimeMillis();
         bossWaveFireCooldown.reset();
         bossWaveAngleDeg = 0f;
         bossWaveRotationAccum = 0f;
@@ -260,7 +264,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         // Wave 연출 시 잔상이 겹치지 않도록, 이전 세트를 지우고 현재 세트만 남긴다.
         laserBeamManager.clear();
         for (int i = 0; i < 8; i++) {
-            float angle = (float) (baseAngleRad + Math.toRadians(45 * i));
+            float angle = (float) (baseAngleRad + Math.toRadians(45 * (double)i));
             spawnLaser(angle, bossWaveBeamDurationMs);
         }
         // keep beam count bounded to avoid buildup
@@ -276,7 +280,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
 
     private void spawnLaser(float angleRad, long durationMs) {
         float originX = positionX + width / 2f;
-        float originY = positionY + height;
+        float originY = positionY + (float)height;
 
         LaserBeam beam = new LaserBeam(
                 originX, originY,
@@ -324,8 +328,8 @@ public class FinalBoss_3 extends Entity implements BossEntity {
         else if (healPoint >= maxHP * 0.2f) speed = 5;
         else                                 speed = 7;
 
-        if (Math.random() < 0.12) {
-            double r = Math.random();
+        if (this.random.nextDouble() < 0.12) {
+            double r = this.random.nextDouble();
             if (r < 0.125)      { moveDirX = 1;  moveDirY = 0;  }
             else if (r < 0.250) { moveDirX = -1; moveDirY = 0;  }
             else if (r < 0.375) { moveDirX = 0;  moveDirY = 1;  }
@@ -367,7 +371,7 @@ public class FinalBoss_3 extends Entity implements BossEntity {
             originY = positionY + height / 2f;
         } else {
             originX = positionX + width / 2f;
-            originY = positionY + height;
+            originY = positionY + (float)height;
         }
 
         LaserBeam beam = new LaserBeam(
@@ -437,7 +441,6 @@ public class FinalBoss_3 extends Entity implements BossEntity {
             float angle = (360f / 8) * i;
             startLaserWarning(angle, 600);
         }
-        return;
     }
     @Override
     public void takeDamage(int dmg) {
