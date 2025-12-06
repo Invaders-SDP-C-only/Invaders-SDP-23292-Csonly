@@ -109,6 +109,8 @@ public class GameScreen extends Screen {
 	private int maxLives;
 	/** Current coin. */
 	private int coin;
+	/** recorded time for timer. */
+	private long recordedTime = 0;
 
 	/** Melee mode parry spark effect. */
 	private Entity parrySparkEffect;
@@ -158,6 +160,7 @@ public class GameScreen extends Screen {
 
     private PauseManager pauseManager;
     private boolean escLast;
+
 
 	/** Laser beam manager for handling laser beams. */
 	// (already declared above as laserBeamManager)
@@ -290,8 +293,13 @@ public class GameScreen extends Screen {
 		if (inputReady && esc && !escLast && !this.levelFinished) {
 			pauseManager.togglePause();
 			pauseManager.resetFlags();
-			if (pauseManager.isPaused() && this.gameTimer != null && this.gameTimer.isRunning()) {
+			if (this.gameTimer != null && this.gameTimer.isRunning()) {
 				this.gameTimer.stop();
+				this.recordedTime += this.gameTimer.getElapsedTime();
+			} else {
+				if (this.gameTimer != null && !this.gameTimer.isRunning()) {
+					this.gameTimer.start();
+				}
 			}
 		}
 		escLast = esc;
@@ -305,10 +313,6 @@ public class GameScreen extends Screen {
 			} else if (pauseManager.wantReset) {
 				this.returnCode = 2; // Restart current level
 				this.isRunning = false;
-			} else if (!pauseManager.isPaused() && inputReady) {
-				if (this.gameTimer != null && !this.gameTimer.isRunning()) {
-					this.gameTimer.start();
-				}
 			}
 
 			pauseManager.resetFlags();
@@ -321,6 +325,8 @@ public class GameScreen extends Screen {
 			if (!this.gameTimer.isRunning()) {
 				this.gameTimer.start();
 			}
+
+			this.elapsedTime = this.recordedTime + (this.gameTimer.isRunning() ? this.gameTimer.getElapsedTime() : 0);
 
 			if (this.livesP1 > 0 && !this.ship.isDestroyed()) {
 				boolean p1Right = inputManager.isP1KeyDown(KeyEvent.VK_D);
@@ -751,6 +757,7 @@ public class GameScreen extends Screen {
 				} else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
 						&& checkCollision(bullet, this.shipP2) && !this.levelFinished) {
 					recyclable.add(bullet);
+					// Check P2 Collision
 					if (!this.shipP2.isInvincible()) {
 						if (!this.shipP2.isDestroyed()) {
 							this.shipP2.destroy();
@@ -1318,7 +1325,7 @@ public class GameScreen extends Screen {
 	}
 
 	/**
-	 * Manages the SekiroBoss's state and updates.
+	 * Manages the Samurai Boss's state and updates.
 	 */
 	private void sekiroBossManage() {
 		if (this.SamuraiBoss == null) return;
@@ -1467,6 +1474,7 @@ public class GameScreen extends Screen {
 					}
 					bulletsToRemove.add(b);
 				}
+				// Check P2 Collision
 				else if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed() && this.checkCollision(b, this.shipP2)) {
 					if (!this.shipP2.isDestroyed()) {
 						this.shipP2.destroy();
@@ -1488,7 +1496,7 @@ public class GameScreen extends Screen {
 	}
 
 	/**
-	 * finalBoss3 (laser boss) management
+	 * Manages FinalBoss_3 (Laser Boss) behavior.
 	 */
 	public void finalBoss3Manage() {
 		if (this.finalBoss3 != null && !this.finalBoss3.isDestroyed()) {
@@ -1505,7 +1513,7 @@ public class GameScreen extends Screen {
 					continue;
 				}
 
-				// P1 충돌
+				// Check P1 Collision
 				if (this.livesP1 > 0 && this.ship != null && !this.ship.isDestroyed()
 						&& this.checkCollision(b, this.ship)) {
 
@@ -1519,7 +1527,7 @@ public class GameScreen extends Screen {
 					continue;
 				}
 
-				// P2 충돌
+				// Check P2 Collision
 				if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()
 						&& this.checkCollision(b, this.shipP2)) {
 
