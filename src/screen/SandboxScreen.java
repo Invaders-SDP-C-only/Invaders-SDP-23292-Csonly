@@ -424,10 +424,8 @@ public class SandboxScreen extends Screen {
                 if (isCheatMode) {
                     this.coin = 99999;
                     this.livesP1 = 20;
-                    this.ship.setCheatMode(true);
                     if (this.shipP2 != null) {
                         this.livesP2 = 20;
-                        this.shipP2.setCheatMode(true);
                     }
                     logger.info("CHEAT MODE: ON");
                 } else {
@@ -953,6 +951,8 @@ public class SandboxScreen extends Screen {
             for (EnemyShip e : room.getEnemyFormation()) {
                 if (!e.isDestroyed() && checkCollision(b, e)) {
                     triggerImpactEffect(e.getPositionX(), e.getPositionY(), 2, 0, Color.YELLOW);
+                    triggerExplosion(ship.getPositionX(), ship.getPositionY(), ship.getColor());
+
                     room.getEnemyFormation().destroy(e);
                     this.score += e.getPointValue();
                     this.coin += 5;
