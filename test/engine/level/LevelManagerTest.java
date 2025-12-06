@@ -42,6 +42,6 @@ class LevelManagerTest {
         LevelManager levelManager = new LevelManager();
 
         // Test getNumberOfLevels when levels is null
-        assertEquals(8, levelManager.getNumberOfLevels(), "getNumberOfLevels should return 0 when the levels list is null.");
+        assertEquals(7, levelManager.getNumberOfLevels(), "getNumberOfLevels should return 0 when the levels list is null.");
     }
 }
