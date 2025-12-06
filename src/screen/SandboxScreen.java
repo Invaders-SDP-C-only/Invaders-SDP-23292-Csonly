@@ -146,6 +146,9 @@ public class SandboxScreen extends Screen {
     private Entity parrySparkEffect, parrySparkEffect2;
     /** Level manager instance. */
     private static LevelManager levelManager;
+    /** Checks shooting key is pressed. */
+    private boolean isShootingP1 = false;
+    private boolean isShootingP2 = false;
 
     /**
      * Returns the Y-coordinate of the bottom boundary.
@@ -851,6 +854,7 @@ public class SandboxScreen extends Screen {
 
         if (laserBeamManager != null) {
             if (livesP1 > 0 && !ship.isDestroyed() && !ship.isInvincible() && laserBeamManager.checkCollisionWithShip(ship)) {
+                triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 5, Color.WHITE);
                 triggerExplosion(ship.getPositionX(), ship.getPositionY(), ship.getColor());
                 ship.destroy();
                 livesP1--;
@@ -858,6 +862,7 @@ public class SandboxScreen extends Screen {
                 if (livesP1 > 0) ship.activateInvincibility(2000);
             }
             if (shipP2 != null && livesP2 > 0 && !shipP2.isDestroyed() && !shipP2.isInvincible() && laserBeamManager.checkCollisionWithShip(shipP2)) {
+                triggerImpactEffect(shipP2.getPositionX(), shipP2.getPositionY(), 5, 5, Color.WHITE);
                 triggerExplosion(shipP2.getPositionX(), shipP2.getPositionY(), shipP2.getColor());
                 shipP2.destroy();
                 livesP2--;
@@ -951,8 +956,6 @@ public class SandboxScreen extends Screen {
             for (EnemyShip e : room.getEnemyFormation()) {
                 if (!e.isDestroyed() && checkCollision(b, e)) {
                     triggerImpactEffect(e.getPositionX(), e.getPositionY(), 2, 0, Color.YELLOW);
-                    triggerExplosion(ship.getPositionX(), ship.getPositionY(), ship.getColor());
-
                     room.getEnemyFormation().destroy(e);
                     this.score += e.getPointValue();
                     this.coin += 5;
@@ -1108,7 +1111,6 @@ public class SandboxScreen extends Screen {
             boss.onParried();
             SoundManager.play("sfx/parry.wav");
             triggerImpactEffect(player.getPositionX(), player.getPositionY(), 5, 5, Color.YELLOW);
-            triggerExplosion(player.getPositionX(), player.getPositionY(), ship.getColor());
             triggerParryEffect(player);
         }
         else if (player.isParrying() && !boss.isAttacking()) {
@@ -1121,7 +1123,7 @@ public class SandboxScreen extends Screen {
             if (player.getPlayerId() == 1) livesP1--;
             else livesP2--;
 
-            SoundManager.play("sfx/impact.wav");
+            SoundManager.play("sfx/exposion.wav");
 
         }
     }
@@ -1146,7 +1148,6 @@ public class SandboxScreen extends Screen {
             boss.onParried();
             SoundManager.play("sfx/parry.wav");
             triggerImpactEffect(player.getPositionX(), player.getPositionY(), 5, 5, Color.YELLOW);
-            triggerExplosion(player.getPositionX(), player.getPositionY(), ship.getColor());
             triggerParryEffect(player);
         }
         else if (player.isParrying()) {
@@ -1156,7 +1157,7 @@ public class SandboxScreen extends Screen {
             player.destroy();
             triggerImpactEffect(player.getPositionX(), player.getPositionY(), 5, 5, Color.RED);
             if (player.getPlayerId() == 1) livesP1--; else livesP2--;
-            SoundManager.play("sfx/impact.wav");
+            SoundManager.play("sfx/exposion.wav");
         }
     }
 
@@ -1166,9 +1167,9 @@ public class SandboxScreen extends Screen {
     private void triggerParryEffect(Ship player) {
         int centerX = player.getPositionX() + (player.getWidth() / 2);
         int boundaryY = player.getPositionY();
-        this.parrySparkEffect.setPositionX(centerX - 10);
+        this.parrySparkEffect.setPositionX(centerX -40);
         this.parrySparkEffect.setPositionY(boundaryY - 10);
-        this.parrySparkEffect2.setPositionX(centerX + 10);
+        this.parrySparkEffect2.setPositionX(centerX + 15);
         this.parrySparkEffect2.setPositionY(boundaryY - 10);
         this.parrySparkCooldown.reset();
     }
@@ -1189,18 +1190,28 @@ public class SandboxScreen extends Screen {
      */
     private void manageInput() {
         if (this.livesP1 > 0 && !this.ship.isDestroyed()) {
-            if (inputManager.isKeyDown(KeyEvent.VK_D) && ship.getPositionX() + ship.getWidth() < width) this.ship.moveRight();
-            if (inputManager.isKeyDown(KeyEvent.VK_A) && ship.getPositionX() > 0) this.ship.moveLeft();
-            if (inputManager.isKeyDown(KeyEvent.VK_W) && ship.getPositionY() > SEPARATION_LINE_HEIGHT) this.ship.moveUp();
-            if (inputManager.isKeyDown(KeyEvent.VK_S) && ship.getPositionY() + ship.getHeight() < height) this.ship.moveDown();
-            if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) this.ship.shoot(this.bullets);
+            if (inputManager.isActionPressed("RIGHT") && ship.getPositionX() + ship.getWidth() < width) this.ship.moveRight();
+            if (inputManager.isActionPressed("LEFT") && ship.getPositionX() > 0) this.ship.moveLeft();
+            if (inputManager.isActionPressed("UP") && ship.getPositionY() > SEPARATION_LINE_HEIGHT) this.ship.moveUp();
+            if (inputManager.isActionPressed("DOWN") && ship.getPositionY() + ship.getHeight() < height) this.ship.moveDown();
+            boolean p1Fire = inputManager.isActionPressed("SHOOT");
+            // Shooting only when press SHOOT key and not pressed previous.
+            if (p1Fire && !isShootingP1) {
+                this.ship.shoot(this.bullets);
+            }
+            // Save current state of shooting.
+            isShootingP1 = p1Fire;
         }
         if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()) {
-            if (inputManager.isKeyDown(KeyEvent.VK_RIGHT) && shipP2.getPositionX() + shipP2.getWidth() < width) this.shipP2.moveRight();
-            if (inputManager.isKeyDown(KeyEvent.VK_LEFT) && shipP2.getPositionX() > 0) this.shipP2.moveLeft();
-            if (inputManager.isKeyDown(KeyEvent.VK_UP) && shipP2.getPositionY() > SEPARATION_LINE_HEIGHT) this.shipP2.moveUp();
-            if (inputManager.isKeyDown(KeyEvent.VK_DOWN) && shipP2.getPositionY() + shipP2.getHeight() < height) this.shipP2.moveDown();
-            if (inputManager.isKeyDown(KeyEvent.VK_ENTER) || inputManager.isKeyDown(KeyEvent.VK_NUMPAD0)) this.shipP2.shoot(this.bullets);
+            if (inputManager.isActionPressedP2("RIGHT") && shipP2.getPositionX() + shipP2.getWidth() < width) this.shipP2.moveRight();
+            if (inputManager.isActionPressedP2("LEFT") && shipP2.getPositionX() > 0) this.shipP2.moveLeft();
+            if (inputManager.isActionPressedP2("UP") && shipP2.getPositionY() > SEPARATION_LINE_HEIGHT) this.shipP2.moveUp();
+            if (inputManager.isActionPressedP2("DOWN") && shipP2.getPositionY() + shipP2.getHeight() < height) this.shipP2.moveDown();
+            boolean p2Fire = inputManager.isActionPressedP2("SHOOT");
+            if (p2Fire && !isShootingP2) {
+                this.shipP2.shoot(this.bullets);
+            }
+            isShootingP2 = p2Fire;
         }
     }
 
@@ -1443,16 +1454,15 @@ public class SandboxScreen extends Screen {
                 if (checkCollision(wave, ship)) {
                     if (ship.isParrying()) {
                         SoundManager.play("sfx/parry.wav");
-                        triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 3, Color.WHITE);
+                        triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 3, Color.YELLOW);
                         recyclable.add(wave);
                     } else {
                         recyclable.add(wave);
                         triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 3, Color.WHITE);
                         triggerExplosion(ship.getPositionX(), ship.getPositionY(), ship.getColor());
-                        triggerExplosion(ship.getPositionX(), ship.getPositionY(), ship.getColor());
                         ship.destroy();
                         livesP1--;
-                        SoundManager.play("sfx/impact.wav");
+                        SoundManager.play("sfx/exposion.wav");
                         if (livesP1 > 0) ship.activateInvincibility(2000);
                     }
                 }
@@ -1463,14 +1473,14 @@ public class SandboxScreen extends Screen {
                 if (checkCollision(wave, shipP2)) {
                     if (shipP2.isParrying()) {
                         SoundManager.play("sfx/parry.wav");
-                        triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 5, Color.WHITE);
+                        triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 5, Color.YELLOW);
                         recyclable.add(wave);
                     } else {
                         recyclable.add(wave);
-                        triggerImpactEffect(shipP2.getPositionX(), shipP2.getPositionY(), 5, 5, Color.WHITE);
+                        triggerImpactEffect(shipP2.getPositionX(), shipP2.getPositionY(), 5, 5, Color.YELLOW);
                         triggerExplosion(shipP2.getPositionX(), shipP2.getPositionY(), shipP2.getColor());shipP2.destroy();
                         livesP2--;
-                        SoundManager.play("sfx/impact.wav");
+                        SoundManager.play("sfx/exposion.wav");
                         if (livesP2 > 0) ship.activateInvincibility(2000);
                     }
                 }

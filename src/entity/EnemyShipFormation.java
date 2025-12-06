@@ -248,6 +248,8 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 				this.shooters.add(column.get(column.size() - 1));
 			}
 		}
+		this.shipCount = 0;
+		for (List<EnemyShip> col : enemyShips) this.shipCount += col.size();
 	}
 
 	/**
@@ -609,15 +611,15 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 * Bullets set to add the bullet being shot.
 	 */
 	public final void shoot(final Set<Bullet> bullets) {
-		// For now, only ships in the bottom row are able to shoot.
-		if (this.shooters.isEmpty()) {return; }
-		int index = (int) (Math.random() * this.shooters.size());
-		EnemyShip shooter = this.shooters.get(index);
-
+		this.shooters.removeIf(EnemyShip::isDestroyed);
+		if (this.shooters.isEmpty()) return;
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
-			bullets.add(BulletPool.getBullet(shooter.getPositionX()
-					+ shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+			int index = (int) (Math.random() * this.shooters.size());
+			EnemyShip shooter = this.shooters.get(index);
+			if (!shooter.isDestroyed()) {
+				bullets.add(BulletPool.getBullet(shooter.getPositionX() + shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+			}
 		}
 	}
 
@@ -722,7 +724,12 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 * * @return True if formation is empty.
 	 */
 	public final boolean isEmpty() {
-		return this.shipCount <= 0;
+		for (List<EnemyShip> column : this.enemyShips) {
+			for (EnemyShip ship : column) {
+				if (!ship.isDestroyed()) return false;
+			}
+		}
+		return true;
 	}
 
 	/**
