@@ -388,9 +388,9 @@ public class GameScreen extends Screen {
 	private void triggerParryEffect(Ship player) {
 		int centerX = player.getPositionX() + (player.getWidth() / 2);
 		int boundaryY = player.getPositionY();
-		this.parrySparkEffect.setPositionX(centerX - 10);
+		this.parrySparkEffect.setPositionX(centerX - 40);
 		this.parrySparkEffect.setPositionY(boundaryY - 10);
-		this.parrySparkEffect2.setPositionX(centerX + 10);
+		this.parrySparkEffect2.setPositionX(centerX + 15);
 		this.parrySparkEffect2.setPositionY(boundaryY - 10);
 		this.parrySparkCooldown.reset();
 	}
@@ -1200,7 +1200,7 @@ public class GameScreen extends Screen {
 				if (checkCollision(wave, this.ship)) {
 					if (this.ship.isParrying()) {
 						SoundManager.play("sfx/parry.wav");
-						triggerImpactEffect(this.ship.getPositionX(), this.ship.getPositionY(), 5, 3, Color.WHITE);
+						triggerImpactEffect(this.ship.getPositionX(), this.ship.getPositionY(), 5, 3, Color.YELLOW);
 						recyclable.add(wave);
 					} else {
 						recyclable.add(wave);
@@ -1221,7 +1221,7 @@ public class GameScreen extends Screen {
 				if (checkCollision(wave, this.shipP2)) {
 					if (this.shipP2.isParrying()) {
 						SoundManager.play("sfx/parry.wav");
-						triggerImpactEffect(this.shipP2.getPositionX(), this.shipP2.getPositionY(), 5, 5, Color.WHITE);
+						triggerImpactEffect(this.shipP2.getPositionX(), this.shipP2.getPositionY(), 5, 5, Color.YELLOW);
 						recyclable.add(wave);
 					} else {
 						recyclable.add(wave);
@@ -1555,7 +1555,7 @@ public class GameScreen extends Screen {
 			boss.executeDeathblow();
 			SoundManager.play("sfx/samurai-kill.wav");
 			triggerImpactEffect(playerShip.getPositionX(), playerShip.getPositionY(), 10, 10, Color.RED);
-			playerShip.activateInvincibility(3000);
+			playerShip.activateInvincibility(2000);
 		}
 		// 2. Parry
 		else if (playerShip.isParrying() && boss.isAttacking()) {
@@ -1573,9 +1573,10 @@ public class GameScreen extends Screen {
 		}
 		// 4. Player Damage
 		else if (boss.isAttacking() && !playerShip.isInvincible()) {
+			triggerImpactEffect(playerShip.getPositionX(), playerShip.getPositionY(), 10, 10, Color.RED);
 			triggerExplosion(playerShip.getPositionX(), playerShip.getPositionY(), playerShip.getColor());
 			playerShip.destroy();
-			SoundManager.play("sfx/impact.wav");
+			SoundManager.play("sfx/samurai-kill.wav");
 			if (playerShip.getPlayerId() == 1) {
 				this.livesP1--;
 				this.logger.info(HIT_ON_PLAYER_PREFIX + this.livesP1 + LIVES_REMAINING_SUFFIX);

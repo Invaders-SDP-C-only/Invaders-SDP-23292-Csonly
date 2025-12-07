@@ -186,14 +186,17 @@ public class SamuraiBoss extends Entity implements BossEntity {
             case NORMAL:
                 patrol();
                 if (rushCooldown.checkFinished()) {
-                    // Randomize combo count
-                    if (isEnraged) {
-                        this.targetComboCount = 6 + random.nextInt(5); // 6~10 combos
-                    } else {
-                        this.targetComboCount = 2 + random.nextInt(5); // 2~6 combos
+                    Ship target = getClosestPlayer();
+                    // Randomize combo count (attack when player is not in invincible mode and not null)
+                    if (target != null && !target.isInvincible()) {
+                        if (isEnraged) {
+                            this.targetComboCount = 6 + random.nextInt(5); // 6~10
+                        } else {
+                            this.targetComboCount = 2 + random.nextInt(5); // 2~6
+                        }
+                        this.currentComboCount = 0;
+                        startRush();
                     }
-                    this.currentComboCount = 0;
-                    startRush();
                 }
                 break;
 
@@ -512,14 +515,14 @@ public class SamuraiBoss extends Entity implements BossEntity {
      * @return Nearest Ship object or null.
      */
     private Ship getClosestPlayer() {
-        if (player2 == null) return (player1 != null && !player1.isDestroyed()) ? player1 : null;
-        if (screen == null) return null;
         boolean p1Alive = (player1 != null && !player1.isDestroyed());
         boolean p2Alive = (player2 != null && !player2.isDestroyed());
         if (!p1Alive && !p2Alive) return null;
         if (p1Alive && !p2Alive) return player1;
         if (!p1Alive && p2Alive) return player2;
-        return (Math.abs(positionX - player1.getPositionX()) <= Math.abs(positionX - player2.getPositionX())) ? player1 : player2;
+        double d1 = Math.abs(this.positionX - player1.getPositionX());
+        double d2 = Math.abs(this.positionX - player2.getPositionX());
+        return (d1 <= d2) ? player1 : player2;
     }
 
     /**

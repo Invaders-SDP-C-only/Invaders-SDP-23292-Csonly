@@ -774,11 +774,14 @@ public class SandboxScreen extends Screen {
         if (currentRoomRow == 2 && currentRoomCol == MAP_SIZE - 1) {
             ship.setMeleeMode(true);
             if (shipP2 != null) shipP2.setMeleeMode(true);
+            int safeY = ITEMS_SEPARATION_LINE_HEIGHT - 40;
+            if (livesP1 > 0) ship.setPositionY(safeY);
+            if (shipP2 != null && livesP2 > 0) shipP2.setPositionY(safeY);
             if (!room.isCleared()) {
                 this.instructionMessage = "PRESS SPACE TO PARRY!";
                 this.instructionCooldown.reset();
-                if (livesP1 > 0) ship.activateInvincibility(3000);
-                if (shipP2 != null && livesP2 > 0) shipP2.activateInvincibility(3000);
+                if (livesP1 > 0) ship.activateInvincibility(2000);
+                if (shipP2 != null && livesP2 > 0) shipP2.activateInvincibility(2000);
             }
         }
 
@@ -1104,7 +1107,8 @@ public class SandboxScreen extends Screen {
         if (player.isParrying() && boss.isPostureBroken() && !boss.isInvincibleAfterBroken()) {
             boss.executeDeathblow();
             SoundManager.play("sfx/samurai-kill.wav");
-            player.activateInvincibility(3000);
+            triggerImpactEffect(player.getPositionX(), player.getPositionY(), 10, 10, Color.RED);
+            player.activateInvincibility(2000);
             if (boss.isDestroyed()) handleBossDeath(getCurrentRoom());
         }
         else if (player.isParrying() && boss.isAttacking()) {
@@ -1118,12 +1122,13 @@ public class SandboxScreen extends Screen {
             if (!boss.isPostureBroken()) boss.takePostureDamage(boss.isEnraged() ? 10 : 20);
         }
         else if (boss.isAttacking() && !player.isInvincible()) {
+            triggerImpactEffect(player.getPositionX(), player.getPositionY(), 10, 10, Color.RED);
             triggerExplosion(player.getPositionX(), player.getPositionY(), player.getColor());
             player.destroy();
             if (player.getPlayerId() == 1) livesP1--;
             else livesP2--;
 
-            SoundManager.play("sfx/exposion.wav");
+            SoundManager.play("sfx/samurai-kill.wav");
 
         }
     }
@@ -1139,9 +1144,9 @@ public class SandboxScreen extends Screen {
 
         if (player.isParrying() && boss.isPostureBroken()) {
             boss.executeDeathblow();
-            triggerImpactEffect(player.getPositionX(), player.getPositionY(), 10, 10, Color.RED);
             SoundManager.play("sfx/samurai-kill.wav");
-            player.activateInvincibility(3000);
+            triggerImpactEffect(player.getPositionX(), player.getPositionY(), 10, 10, Color.RED);
+            player.activateInvincibility(1000);
             if (boss.isDestroyed()) handleBossDeath(getCurrentRoom());
         }
         else if (player.isParrying() && boss.isAttacking()) {
@@ -1157,7 +1162,7 @@ public class SandboxScreen extends Screen {
             player.destroy();
             triggerImpactEffect(player.getPositionX(), player.getPositionY(), 5, 5, Color.RED);
             if (player.getPlayerId() == 1) livesP1--; else livesP2--;
-            SoundManager.play("sfx/exposion.wav");
+            SoundManager.play("sfx/samurai-kill.wav");
         }
     }
 
@@ -1190,9 +1195,11 @@ public class SandboxScreen extends Screen {
      */
     private void manageInput() {
         if (this.livesP1 > 0 && !this.ship.isDestroyed()) {
+            int minYLimit = SEPARATION_LINE_HEIGHT;
+            if (this.currentBoss instanceof SamuraiBoss && !((SamuraiBoss) this.currentBoss).isDestroyed()) minYLimit = ITEMS_SEPARATION_LINE_HEIGHT / 2;
             if (inputManager.isActionPressed("RIGHT") && ship.getPositionX() + ship.getWidth() < width) this.ship.moveRight();
             if (inputManager.isActionPressed("LEFT") && ship.getPositionX() > 0) this.ship.moveLeft();
-            if (inputManager.isActionPressed("UP") && ship.getPositionY() > SEPARATION_LINE_HEIGHT) this.ship.moveUp();
+            if (inputManager.isActionPressed("UP") && ship.getPositionY() > minYLimit) this.ship.moveUp();
             if (inputManager.isActionPressed("DOWN") && ship.getPositionY() + ship.getHeight() < height) this.ship.moveDown();
             boolean p1Fire = inputManager.isActionPressed("SHOOT");
             // Shooting only when press SHOOT key and not pressed previous.
@@ -1203,9 +1210,11 @@ public class SandboxScreen extends Screen {
             isShootingP1 = p1Fire;
         }
         if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()) {
+            int minYLimitP2 = SEPARATION_LINE_HEIGHT;
+            if (this.currentBoss instanceof SamuraiBoss && !((SamuraiBoss) this.currentBoss).isDestroyed()) minYLimitP2 = ITEMS_SEPARATION_LINE_HEIGHT / 2;
             if (inputManager.isActionPressedP2("RIGHT") && shipP2.getPositionX() + shipP2.getWidth() < width) this.shipP2.moveRight();
             if (inputManager.isActionPressedP2("LEFT") && shipP2.getPositionX() > 0) this.shipP2.moveLeft();
-            if (inputManager.isActionPressedP2("UP") && shipP2.getPositionY() > SEPARATION_LINE_HEIGHT) this.shipP2.moveUp();
+            if (inputManager.isActionPressedP2("UP") && shipP2.getPositionY() > minYLimitP2) this.shipP2.moveUp();
             if (inputManager.isActionPressedP2("DOWN") && shipP2.getPositionY() + shipP2.getHeight() < height) this.shipP2.moveDown();
             boolean p2Fire = inputManager.isActionPressedP2("SHOOT");
             if (p2Fire && !isShootingP2) {
@@ -1400,7 +1409,10 @@ public class SandboxScreen extends Screen {
         drawManager.drawItemsHUD(this);
         drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
         drawManager.drawHorizontalLine(this, ITEMS_SEPARATION_LINE_HEIGHT);
-
+        if (currentBoss instanceof SamuraiBoss && !((SamuraiBoss) currentBoss).isDestroyed()) {
+            g.setColor(new Color(255, 0, 0, 100));
+            g.drawLine(0, ITEMS_SEPARATION_LINE_HEIGHT / 2, width, ITEMS_SEPARATION_LINE_HEIGHT / 2);
+        }
         // Draw Messages
         if (this.instructionMessage != null && !this.instructionCooldown.checkFinished()) {
             drawManager.drawCenteredBigString(this, this.instructionMessage, this.height / 2 - 100);
