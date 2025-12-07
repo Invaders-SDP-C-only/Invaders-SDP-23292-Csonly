@@ -149,6 +149,10 @@ public class SandboxScreen extends Screen {
     /** Checks shooting key is pressed. */
     private boolean isShootingP1 = false;
     private boolean isShootingP2 = false;
+    /** Helper for Input Buffer */
+    private long p1ShotBufferTimer = 0;
+    private long p2ShotBufferTimer = 0;
+    private static final long INPUT_BUFFER_DURATION = 150; // 0.15s
 
     /**
      * Returns the Y-coordinate of the bottom boundary.
@@ -961,7 +965,7 @@ public class SandboxScreen extends Screen {
                     triggerImpactEffect(e.getPositionX(), e.getPositionY(), 2, 0, Color.YELLOW);
                     room.getEnemyFormation().destroy(e);
                     this.score += e.getPointValue();
-                    this.coin += 5;
+                    this.coin += e.getPointValue() / 10;
                     spawnItem(e, room.getLevelNumber());
                     return true;
                 }
@@ -1018,7 +1022,8 @@ public class SandboxScreen extends Screen {
             if (drop.getEnemyType().equals(enemy.getEnemyType()) && Math.random() < drop.getDropChance()) {
                 DropItem.ItemType type = DropItem.fromString(drop.getItemId());
                 if (type != null) {
-                    dropItems.add(ItemPool.getItem(enemy.getPositionX(), enemy.getPositionY(), 2, type));
+                    DropItem item = ItemPool.getItem( enemy.getPositionX() + enemy.getWidth() / 2, enemy.getPositionY(), 2, type);
+                    dropItems.add(item);
                 }
             }
         }
@@ -1201,13 +1206,17 @@ public class SandboxScreen extends Screen {
             if (inputManager.isActionPressed("LEFT") && ship.getPositionX() > 0) this.ship.moveLeft();
             if (inputManager.isActionPressed("UP") && ship.getPositionY() > minYLimit) this.ship.moveUp();
             if (inputManager.isActionPressed("DOWN") && ship.getPositionY() + ship.getHeight() < height) this.ship.moveDown();
-            boolean p1Fire = inputManager.isActionPressed("SHOOT");
+            boolean p1PressedNow = inputManager.isActionPressed("SHOOT");
+            boolean p1JustPressed = p1PressedNow && !isShootingP1;
             // Shooting only when press SHOOT key and not pressed previous.
-            if (p1Fire && !isShootingP1) {
-                this.ship.shoot(this.bullets);
+            if (p1JustPressed) p1ShotBufferTimer = System.currentTimeMillis() + INPUT_BUFFER_DURATION;
+            if (System.currentTimeMillis() < p1ShotBufferTimer) {
+                if (this.ship.shoot(this.bullets)) {
+                    p1ShotBufferTimer = 0;
+               }
             }
             // Save current state of shooting.
-            isShootingP1 = p1Fire;
+            isShootingP1 = p1PressedNow;
         }
         if (this.shipP2 != null && this.livesP2 > 0 && !this.shipP2.isDestroyed()) {
             int minYLimitP2 = SEPARATION_LINE_HEIGHT;
@@ -1216,11 +1225,13 @@ public class SandboxScreen extends Screen {
             if (inputManager.isActionPressedP2("LEFT") && shipP2.getPositionX() > 0) this.shipP2.moveLeft();
             if (inputManager.isActionPressedP2("UP") && shipP2.getPositionY() > minYLimitP2) this.shipP2.moveUp();
             if (inputManager.isActionPressedP2("DOWN") && shipP2.getPositionY() + shipP2.getHeight() < height) this.shipP2.moveDown();
-            boolean p2Fire = inputManager.isActionPressedP2("SHOOT");
-            if (p2Fire && !isShootingP2) {
-                this.shipP2.shoot(this.bullets);
+            boolean p2PressedNow = inputManager.isActionPressedP2("SHOOT");
+            boolean p2JustPressed = p2PressedNow && !isShootingP2;
+            if (p2JustPressed) {p2ShotBufferTimer = System.currentTimeMillis() + INPUT_BUFFER_DURATION;}
+            if (this.shipP2.shoot(this.bullets)) {
+                p2ShotBufferTimer = 0;
             }
-            isShootingP2 = p2Fire;
+            isShootingP2 = p2PressedNow;
         }
     }
 

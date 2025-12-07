@@ -175,7 +175,21 @@ public class Ship extends Entity {
 			this.shootingCooldown = Core.getCooldown(50);
 		} else {
 			// Restore normal fire rate
-			this.shootingCooldown = Core.getCooldown(ShopItem.getShootingInterval());
+			restoreCooldown();
+		}
+	}
+
+	/**
+	 * Helper method to restore Cooldown of fire.
+	 */
+	private void restoreCooldown() {
+		int shopSpeed = ShopItem.getShootingInterval();
+		if (this.isHybridMode) {
+			this.shootingCooldown = Core.getCooldown(Math.min(150, shopSpeed));
+		} else if (this.isMeleeMode) {
+			this.shootingCooldown = Core.getCooldown(Math.min(300, shopSpeed));
+		} else {
+			this.shootingCooldown = Core.getCooldown(shopSpeed);
 		}
 	}
 
@@ -283,9 +297,12 @@ public class Ship extends Entity {
 	public final void setMeleeMode(boolean mode) {
 		this.isMeleeMode = mode;
 		this.isHybridMode = false;
-		// Faster cooldown for melee attacks
-		if (mode) this.shootingCooldown = Core.getCooldown(300);
-		else this.shootingCooldown = Core.getCooldown(ShopItem.getShootingInterval());
+		if (mode) {
+			int currentSpeed = ShopItem.getShootingInterval();
+			this.shootingCooldown = Core.getCooldown(Math.min(300, currentSpeed));
+		} else {
+			this.shootingCooldown = Core.getCooldown(ShopItem.getShootingInterval());
+		}
 	}
 
 	/**
@@ -295,9 +312,12 @@ public class Ship extends Entity {
 	public final void setHybridMode(boolean mode) {
 		this.isHybridMode = mode;
 		this.isMeleeMode = false;
-		// Faster cooldown for hybrid attacks
-		if (mode) this.shootingCooldown = Core.getCooldown(300);
-		else this.shootingCooldown = Core.getCooldown(ShopItem.getShootingInterval());
+		if (mode) {
+			int currentSpeed = ShopItem.getShootingInterval();
+			this.shootingCooldown = Core.getCooldown(Math.min(150, currentSpeed));
+		} else {
+			this.shootingCooldown = Core.getCooldown(ShopItem.getShootingInterval());
+		}
 	}
 
 	/**
