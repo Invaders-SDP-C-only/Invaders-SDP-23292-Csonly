@@ -929,7 +929,7 @@ public class SandboxScreen extends Screen {
             hit = true;
         }
         if (shipP2 != null && livesP2 > 0 && !shipP2.isDestroyed() && !shipP2.isInvincible() && checkCollision(e, shipP2)) {
-            triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 5, Color.RED);
+            triggerImpactEffect(shipP2.getPositionX(), shipP2.getPositionY(), 5, 5, Color.RED);
             triggerExplosion(shipP2.getPositionX(), shipP2.getPositionY(), shipP2.getColor());
             shipP2.destroy();
             livesP2--;
@@ -1228,8 +1228,10 @@ public class SandboxScreen extends Screen {
             boolean p2PressedNow = inputManager.isActionPressedP2("SHOOT");
             boolean p2JustPressed = p2PressedNow && !isShootingP2;
             if (p2JustPressed) {p2ShotBufferTimer = System.currentTimeMillis() + INPUT_BUFFER_DURATION;}
-            if (this.shipP2.shoot(this.bullets)) {
-                p2ShotBufferTimer = 0;
+            if (System.currentTimeMillis() < p2ShotBufferTimer) {
+                if (this.shipP2.shoot(this.bullets)) {
+                    p2ShotBufferTimer = 0;
+                }
             }
             isShootingP2 = p2PressedNow;
         }
@@ -1496,7 +1498,7 @@ public class SandboxScreen extends Screen {
                 if (checkCollision(wave, shipP2)) {
                     if (shipP2.isParrying()) {
                         SoundManager.play("sfx/parry.wav");
-                        triggerImpactEffect(ship.getPositionX(), ship.getPositionY(), 5, 5, Color.YELLOW);
+                        triggerImpactEffect(shipP2.getPositionX(), shipP2.getPositionY(), 5, 5, Color.YELLOW);
                         recyclable.add(wave);
                     } else {
                         recyclable.add(wave);
