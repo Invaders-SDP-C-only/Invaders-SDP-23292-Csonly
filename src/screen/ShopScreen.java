@@ -152,21 +152,19 @@ public class ShopScreen extends Screen {
      */
     private void handleItemSelection() {
         // Navigate up
-        if (inputManager.isKeyDown(KeyEvent.VK_UP)
-                || inputManager.isKeyDown(KeyEvent.VK_W)) {
+        if (inputManager.menuInput("UP")) {
             previousItem();
             this.selectionCooldown.reset();
         }
 
         // Navigate down
-        if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
-                || inputManager.isKeyDown(KeyEvent.VK_S)) {
+        if (inputManager.menuInput("DOWN")) {
             nextItem();
             this.selectionCooldown.reset();
         }
 
         // Select item (enter level selection)
-        if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+        if (inputManager.menuInput("SHOOT")) {
             if (selectedItem == TOTAL_ITEMS) {
                 // Exit option selected
                 this.isRunning = false;
@@ -192,8 +190,7 @@ public class ShopScreen extends Screen {
      */
     private void handleLevelSelection() {
         // Navigate left (decrease level)
-        if (inputManager.isKeyDown(KeyEvent.VK_LEFT)
-                || inputManager.isKeyDown(KeyEvent.VK_A)) {
+        if (inputManager.menuInput("LEFT")) {
             if (selectedLevel > 1) {
                 selectedLevel--;
             }
@@ -201,8 +198,7 @@ public class ShopScreen extends Screen {
         }
 
         // Navigate right (increase level)
-        if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)
-                || inputManager.isKeyDown(KeyEvent.VK_D)) {
+        if (inputManager.menuInput("RIGHT")) {
             if (selectedLevel < MAX_LEVELS[selectedItem]) {
                 selectedLevel++;
             }
@@ -210,7 +206,7 @@ public class ShopScreen extends Screen {
         }
 
         // Confirm purchase
-        if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+        if (inputManager.menuInput("SHOOT")) {
             purchaseItem(selectedItem, selectedLevel);
             this.selectionCooldown.reset();
         }

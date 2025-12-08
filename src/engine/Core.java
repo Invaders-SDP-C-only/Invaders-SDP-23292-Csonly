@@ -82,20 +82,21 @@ public final class Core {
 			e.printStackTrace();
 		}
 
+        // Initialize settings manager.
+        GameSettingsManager.getInstance();
+
 		frame = new Frame(WIDTH, HEIGHT);
 		DrawManager.getInstance().setFrame(frame);
 		int width = frame.getWidth();
 		int height = frame.getHeight();
 
 		levelManager = new LevelManager();
-		GameState gameState = new GameState(1, 0, MAX_LIVES, MAX_LIVES, 0, 0,0, 1);
+		GameState gameState = new GameState(1, 0, MAX_LIVES, MAX_LIVES, 0, 0,0);
 
 
         int returnCode = 1;
 		do {
-			int currentCoins = gameState.getCoin();
-			int playerCount = TitleScreen.getSelectPlayerCount();
-            gameState = new GameState(1, 0, MAX_LIVES,MAX_LIVES, 0, 0,currentCoins, playerCount );
+            gameState = new GameState(1, 0, MAX_LIVES,MAX_LIVES, 0, 0,gameState.getCoin());
 			switch (returnCode) {
                 case 1:
                     // Main menu.
@@ -108,73 +109,128 @@ public final class Core {
                     LOGGER.info("Closing title screen.");
                     break;
                 case 2:
+                    // Show player mode selection screen (1P / 2P)
+                    ModeSelectScreen modeScreen = new ModeSelectScreen(width, height, FPS);
+                    frame.setScreen(modeScreen);
+                    modeScreen.run();
+                    String selectedMode = modeScreen.getSelectedMode();
+                    LOGGER.info("Selected Mode: " + selectedMode);
+
+                    // If canceled, return to title
+                    if ("CANCEL".equals(selectedMode)) {
+                        LOGGER.info("Mode selection canceled, returning to title screen.");
+                        currentScreen = new TitleScreen(width, height, FPS);
+                        returnCode = frame.setScreen(currentScreen);
+                        break;
+                    }
+
+                    boolean isTwoPlayer = "2P".equals(selectedMode);
+                    int livesP1 = MAX_LIVES;
+                    int livesP2 = isTwoPlayer ? MAX_LIVES : 0;
+
+                    gameState = new GameState(1, 0, livesP1, livesP2, 0, 0, gameState.getCoin());
+
+                    // ===== Main game loop across levels =====
+                    boolean exitToTitle = false;
+                    boolean looping = true;
                     do {
-                        // One extra life every few levelsa
-                        boolean bonusLife = gameState.getLevel()
-                                % EXTRA_LIFE_FRECUENCY == 0
-                                && gameState.getLivesRemaining() < MAX_LIVES;
+                        boolean isBonusLevel = gameState.getLevel() % EXTRA_LIFE_FRECUENCY == 0;
+                        boolean p1CanGain   = gameState.getLivesRemaining()    > 0 && gameState.getLivesRemaining()    < MAX_LIVES;
+                        boolean p2CanGain   = gameState.getLivesRemainingP2()  > 0 && gameState.getLivesRemainingP2()  < MAX_LIVES;
+                        boolean bonusLife   = isBonusLevel && (p1CanGain || p2CanGain);
 
-						// Music for each level
-						SoundManager.stopAll();
-						SoundManager.playLoop("sfx/level" + gameState.getLevel() + ".wav");
-
+                        // Store state before running level so we can restart if requested.
+                        /*GameState levelStartState = new GameState(
+                                gameState.getLevel(),
+                                gameState.getScore(),
+                                gameState.getLivesRemaining(),
+                                gameState.getLivesRemainingP2(),
+                                gameState.getBulletsShot(),
+                                gameState.getShipsDestroyed(),
+                                gameState.getCoin()
+                        );*/
+                        // Load level
                         engine.level.Level currentLevel = levelManager.getLevel(gameState.getLevel());
+                        
+                        // Level music
+                        SoundManager.stopAll();
+                        if (currentLevel != null && currentLevel.getBgm() != null) {
+                            SoundManager.playLoop(currentLevel.getBgm());
+                        } else {
+                            // Fallback for old behavior or missing BGM
+                            SoundManager.playLoop("sfx/level" + gameState.getLevel() + ".wav");
+                        }
 
-                        // TODO: Handle case where level is not found after JSON loading is implemented.
                         if (currentLevel == null) {
-                          // For now, we can just break or default to level 1 if we run out of levels.
-                          // This will be important when the number of levels is defined by maps.json
-                          break;
-                        }
-
-						SoundManager.stopAll();
-						SoundManager.playLoop("sfx/level" + gameState.getLevel() + ".wav");
-
-                        // Start a new level
-                        currentScreen = new GameScreen(
-                                gameState,
-                                currentLevel,
-                                bonusLife,
-                                MAX_LIVES,
-                                width,
-                                height,
-                                FPS
-                        );
-
-                        LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
-                                + " game screen at " + FPS + " fps.");
-                        frame.setScreen(currentScreen);
-                        LOGGER.info("Closing game screen.");
-                        gameState = ((GameScreen) currentScreen).getGameState();
-                        if (gameState.getLivesRemaining() > 0 || gameState.getLivesRemainingP2() > 0) {
-							SoundManager.stopAll();
-							SoundManager.play("sfx/levelup.wav");
-
-							LOGGER.info("Opening shop screen with "
-                                    + gameState.getCoin() + " coins.");
-
-                            //Launch the ShopScreen (between levels)
-                            currentScreen = new ShopScreen(gameState, width, height, FPS, true);
-
-                            frame.setScreen(currentScreen);
-                            LOGGER.info("Closing shop screen.");
-
-                            gameState = new GameState(
-                                    gameState.getLevel() + 1,          // Increment level
-                                    gameState.getScore(),              // Keep current score
-                                    gameState.getLivesRemaining(),     // Keep remaining lives
-									gameState.getLivesRemainingP2(),   // Keep remaining livesP2
-                                    gameState.getBulletsShot(),        // Keep bullets fired
-                                    gameState.getShipsDestroyed(),     // Keep ships destroyed
-                                    gameState.getCoin(),               // Keep current coins
-									playerCount						   // Keep plyaer Count
+                            // If no more levels are defined, exit to score
+                            looping = false;
+                        } else {
+                            // Start level
+                            currentScreen = new GameScreen(
+                                    gameState,
+                                    currentLevel,
+                                    bonusLife,
+                                    MAX_LIVES,
+                                    width,
+                                    height,
+                                    FPS
                             );
-                        }
-                        // Loop while player still has lives and levels remaining
-                    } while (gameState.getLivesRemaining() > 0 || gameState.getLivesRemainingP2() > 0);
 
-					SoundManager.stopAll();
-					SoundManager.play("sfx/gameover.wav");
+                            LOGGER.info("Starting " + WIDTH + "x" + HEIGHT + " game screen at " + FPS + " fps.");
+                            int gameReturnCode = frame.setScreen(currentScreen);
+                            LOGGER.info("Closing game screen.");
+
+                            // Pull back the updated game state
+                            gameState = ((GameScreen) currentScreen).getGameState();
+
+                            // Handle pause menu navigation outcomes.
+                            if (gameReturnCode == 1) { // Quit to title
+                                exitToTitle = true;
+                                looping = false;
+                            } else if (gameReturnCode == 2) { // Restart current level
+                                // Restart from level 1, fresh state.
+                                gameState = new GameState(
+                                        1,
+                                        0,
+                                        livesP1,
+                                        livesP2,
+                                        0,
+                                        0,
+                                        0
+                                );
+                                continue;
+                            }
+
+                            // Between-level shop if anyone is still alive
+                            if (looping && (gameState.getLivesRemaining() > 0 || gameState.getLivesRemainingP2() > 0)) {
+                                SoundManager.stopAll();
+                                SoundManager.play("sfx/levelup.wav");
+
+                                LOGGER.info("Opening shop screen with " + gameState.getCoin() + " coins.");
+                                currentScreen = new ShopScreen(gameState, width, height, FPS, true);
+                                frame.setScreen(currentScreen);
+
+                                // Prepare next level state
+                                gameState = new GameState(
+                                        gameState.getLevel() + 1,
+                                        gameState.getScore(),
+                                        gameState.getLivesRemaining(),
+                                        gameState.getLivesRemainingP2(),
+                                        gameState.getBulletsShot(),
+                                        gameState.getShipsDestroyed(),
+                                        gameState.getCoin()
+                                );
+                            }
+                        }
+                    } while (looping && (gameState.getLivesRemaining() > 0 || gameState.getLivesRemainingP2() > 0));
+                    if (exitToTitle) {
+                        returnCode = 1;
+                        break;
+                    }
+
+                    // Game over and score screen
+                    SoundManager.stopAll();
+                    SoundManager.play("sfx/gameover.wav");
 
                     LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
                             + " score screen at " + FPS + " fps, with a score of "
@@ -211,22 +267,28 @@ public final class Core {
                     returnCode = frame.setScreen(currentScreen);
                     LOGGER.info("Closing achievement screen.");
                     break;
-				case 8: // (추가) CreditScreen
-					currentScreen = new CreditScreen(width, height, FPS);
-					LOGGER.info("Starting " + currentScreen.getClass().getSimpleName() + " screen.");
-					returnCode = frame.setScreen(currentScreen);
-					break;
-                default:
-                    break;
-            }
-
+				                case 8: // (추가) CreditScreen
+									currentScreen = new CreditScreen(width, height, FPS);
+									LOGGER.info("Starting " + currentScreen.getClass().getSimpleName() + " screen.");
+									returnCode = frame.setScreen(currentScreen);
+									break;
+				                case 9:
+				                    currentScreen = new SettingsScreen(width, height, FPS);
+				                    LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
+				                            + " settings screen at " + FPS + " fps.");
+				                    returnCode = frame.setScreen(currentScreen);
+				                    LOGGER.info("Closing settings screen.");
+				                    break;
+				                default:
+				                    break;
+				            }
         } while (returnCode != 0);
 
         fileHandler.flush();
         fileHandler.close();
         System.exit(0);
 	}
-
+ 
 	/**
 	 * Constructor, not called.
 	 */
@@ -263,7 +325,6 @@ public final class Core {
 
 	/**
 	 * Controls access to the file manager.
-	 * 
 	 * @return Application file manager.
 	 */
 	public static FileManager getFileManager() {

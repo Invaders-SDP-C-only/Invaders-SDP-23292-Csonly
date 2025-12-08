@@ -46,7 +46,7 @@ public class ItemHUDManager {
     
     /** Duration to show dropped items (in milliseconds) */
     private static final long DROPPED_ITEM_DISPLAY_DURATION = 10000; // 10 seconds
-    
+
     /**
      * Information about a dropped item being displayed
      */
@@ -88,6 +88,13 @@ public class ItemHUDManager {
         // Calculate starting X position to align items to the right
         int totalFixedWidth = 5 * ITEM_SQUARE_SIZE + 4 * SQUARE_SPACING;
         this.startX = screen.getWidth() - totalFixedWidth - 20; // 20px margin from right edge
+    }
+
+    /**
+     * Clears the active dropped items list.
+     */
+    public void clear() {
+        this.activeDroppedItems.clear();
     }
     
     /**
