@@ -6,8 +6,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.Collections;
 import java.awt.Color;
+import java.util.Random;
 
 import screen.Screen;
 import screen.GameScreen;
@@ -17,11 +17,14 @@ import engine.DrawManager;
 import engine.DrawManager.SpriteType;
 import engine.GameSettings;
 import engine.level.Level;
+
 /**
  * Groups enemy ships into a formation that moves together.
- * 
+ * This class handles the movement, shooting, and destruction of enemy ships
+ * as a collective unit. It supports various formation patterns (Rectangle, Circle, etc.)
+ * and integrates with the game's level system.
+ *
  * @author <a href="mailto:RobertoIA1987@gmail.com">Roberto Izquierdo Amo</a>
- * 
  */
 public class EnemyShipFormation implements Iterable<EnemyShip> {
 
@@ -45,8 +48,6 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private static final int SIDE_MARGIN = 20;
 	/** Margin on the bottom of the screen. */
 	private static final int BOTTOM_MARGIN = 80;
-	/** Distance to go down each pass. */
-	private static final int DESCENT_DISTANCE = 20;
 	/** Minimum speed allowed. */
 	private static final int MINIMUM_SPEED = 10;
 
@@ -56,8 +57,6 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private Logger logger;
 	/** Screen to draw ships on. */
 	private Screen screen;
-    /** Level reference to read enemyTypes/counts. */
-    private Level levelObj;
 
 	/** List of enemy ships forming the formation. */
 	private List<List<EnemyShip>> enemyShips;
@@ -77,8 +76,6 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private int movementSpeed;
 	/** Current direction the formation is moving on. */
 	private Direction currentDirection;
-	/** Direction the formation was moving previously. */
-	private Direction previousDirection;
 	/** Interval between movements, in frames. */
 	private int movementInterval;
 	/** Total width of the formation. */
@@ -97,36 +94,58 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private List<EnemyShip> shooters;
 	/** Number of not destroyed ships. */
 	private int shipCount;
-    /** Number of slowdown movement */
-    private int slowDownCount;
-    /** Flag to check if slowdown is active */
-    private boolean isSlowedDown;
-    /** Original X_SPEED value */
-    private static final int ORIGINAL_X_SPEED = 8;
-    /** Slowed down X_SPEED value */
-    private static final int SLOWED_X_SPEED = 4;
-    /** Duration of slowdown effect (in movement cycles) */
-    private static final int SLOWDOWN_DURATION = 18;
 
-    /** Directions the formation can move. */
-    private enum Direction {
-        /** Movement to the right-down diagonal. */
-        DOWN_RIGHT,
-        /** Movement to the left-down diagonal. */
-        DOWN_LEFT,
-        /** Movement to the right-up diagonal. */
-        UP_RIGHT,
-        /** Movement to the left-up diagonal. */
-        UP_LEFT
-    };
+	// === Slowdown Effect Variables ===
+	/** Number of movement cycles the slowdown effect has been active. */
+	private int slowDownCount;
+	/** Flag to check if slowdown is active. */
+	private boolean isSlowedDown;
+	/** Original horizontal speed value. */
+	private static final int ORIGINAL_X_SPEED = 8;
+	/** Slowed down horizontal speed value. */
+	private static final int SLOWED_X_SPEED = 4;
+	/** Duration of slowdown effect (in movement cycles). */
+	private static final int SLOWDOWN_DURATION = 18;
+
+	/** Directions the formation can move. */
+	private enum Direction {
+		/** Down and Right. */
+		DOWN_RIGHT,
+		/** Down and Left. */
+		DOWN_LEFT,
+		/** Up and Right. */
+		UP_RIGHT,
+		/** Up and Left. */
+		UP_LEFT
+	};
+
+	/** * Formation patterns available for enemy ships.
+	 * Used especially in Sandbox mode for variety.
+	 */
+	public enum FormationPattern {
+		RECTANGLE,  // Standard Rectangle
+		CIRCLE,     // Circular/Donut Shape
+		TRIANGLE,   // Inverted Triangle
+		V_SHAPE,    // V-Formation
+		RANDOM      // Scattered Randomly
+	}
+	/** Current formation pattern. */
+	private FormationPattern currentPattern;
 
 	/**
 	 * Constructor, sets the initial conditions.
-	 * 
-	 * @param gameSettings
-	 *            Current game settings.
+	 * * @param gameSettings Current game settings.
 	 */
 	public EnemyShipFormation(final GameSettings gameSettings) {
+		this(gameSettings, FormationPattern.RECTANGLE);
+	}
+
+	/**
+	 * Constructor with pattern selection (for Classic Mode mostly).
+	 * * @param gameSettings Current game settings.
+	 * @param pattern Desired formation pattern.
+	 */
+	public EnemyShipFormation(final GameSettings gameSettings, FormationPattern pattern) {
 		this.drawManager = Core.getDrawManager();
 		this.logger = Core.getLogger();
 		this.enemyShips = new ArrayList<List<EnemyShip>>();
@@ -135,126 +154,293 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		this.nShipsWide = gameSettings.getFormationWidth();
 		this.nShipsHigh = gameSettings.getFormationHeight();
 		this.shootingInterval = gameSettings.getShootingFrecuency();
-		this.shootingVariance = (int) (gameSettings.getShootingFrecuency()
-				* SHOOTING_VARIANCE);
+		this.shootingVariance = (int) (gameSettings.getShootingFrecuency() * SHOOTING_VARIANCE);
 		this.baseSpeed = gameSettings.getBaseSpeed();
 		this.movementSpeed = this.baseSpeed;
 		this.positionX = INIT_POS_X;
 		this.positionY = INIT_POS_Y;
 		this.shooters = new ArrayList<EnemyShip>();
-		SpriteType spriteType;
+		this.currentPattern = pattern;
 
-		this.logger.info("Initializing " + nShipsWide + "x" + nShipsHigh
-				+ " ship formation in (" + positionX + "," + positionY + ")");
+		createStandardFormation(this.nShipsWide, this.nShipsHigh);
+		finalizeFormation();
+	}
 
-		// Each sub-list is a column on the formation.
-		for (int i = 0; i < this.nShipsWide; i++)
-			this.enemyShips.add(new ArrayList<EnemyShip>());
+	/**
+	 * Constructor that uses Level directly (Sandbox Mode).
+	 * Defaults to Rectangle pattern.
+	 * * @param level Current level data.
+	 */
+	public EnemyShipFormation(final Level level) {
+		this(level, FormationPattern.RECTANGLE);
+	}
 
-		for (List<EnemyShip> column : this.enemyShips) {
-			for (int i = 0; i < this.nShipsHigh; i++) {
-				if (i / (float) this.nShipsHigh < PROPORTION_C)
-					spriteType = SpriteType.EnemyShipC1;
-				else if (i / (float) this.nShipsHigh < PROPORTION_B
-						+ PROPORTION_C)
-					spriteType = SpriteType.EnemyShipB1;
-				else
-					spriteType = SpriteType.EnemyShipA1;
+	/**
+	 * Constructor that uses Level AND Pattern (For Sandbox).
+	 * Allows creating diverse enemy formations based on level configuration.
+	 * * @param level Current level data.
+	 * @param pattern Desired formation pattern.
+	 */
+	public EnemyShipFormation(final Level level, FormationPattern pattern) {
+		this.drawManager = Core.getDrawManager();
+		this.logger = Core.getLogger();
+		this.enemyShips = new ArrayList<List<EnemyShip>>();
+		this.currentDirection = Direction.DOWN_RIGHT;
+		this.movementInterval = 0;
 
-				column.add(new EnemyShip((SEPARATION_DISTANCE 
-						* this.enemyShips.indexOf(column))
-								+ positionX, (SEPARATION_DISTANCE * i)
-								+ positionY, spriteType));
-				this.shipCount++;
-			}
+		// Load Level Values
+		this.nShipsWide = level.getFormationWidth();
+		this.nShipsHigh = level.getFormationHeight();
+		this.shootingInterval = level.getShootingFrecuency();
+		this.shootingVariance = (int) (level.getShootingFrecuency() * SHOOTING_VARIANCE);
+		this.baseSpeed = level.getBaseSpeed();
+		this.movementSpeed = this.baseSpeed;
+		this.positionX = INIT_POS_X;
+		this.positionY = INIT_POS_Y;
+		this.shooters = new ArrayList<EnemyShip>();
+		this.currentPattern = pattern;
+
+		if (this.currentPattern == null) this.currentPattern = FormationPattern.RECTANGLE;
+
+		this.logger.info("Initializing formation with pattern: " + this.currentPattern);
+
+		// Generation logic branching according to pattern
+		switch (this.currentPattern) {
+			case CIRCLE:
+				createCircleFormation(level);
+				break;
+			case TRIANGLE:
+				createTriangleFormation(level);
+				break;
+			case V_SHAPE:
+				createVShapeFormation(level);
+				break;
+			case RANDOM:
+				createRandomFormation(level);
+				break;
+			case RECTANGLE:
+			default:
+				// Original square logic
+				createRectangularFormationFromLevel(level);
+				break;
 		}
+
+		finalizeFormation();
+	}
+
+	/**
+	 * Common post-processing logic: Calculates width/height and sets initial shooters.
+	 * Should be called after filling the enemyShips list.
+	 */
+	private void finalizeFormation() {
+		if (this.enemyShips.isEmpty() || this.enemyShips.get(0).isEmpty()) return;
 
 		this.shipWidth = this.enemyShips.get(0).get(0).getWidth();
 		this.shipHeight = this.enemyShips.get(0).get(0).getHeight();
 
-		this.width = (this.nShipsWide - 1) * SEPARATION_DISTANCE
-				+ this.shipWidth;
-		this.height = (this.nShipsHigh - 1) * SEPARATION_DISTANCE
-				+ this.shipHeight;
+		// Fit width, height, positionX, positionY exactly
+		cleanUp();
 
-		for (List<EnemyShip> column : this.enemyShips)
-			this.shooters.add(column.get(column.size() - 1));
+		// Shooter Initialization (Bottom-most ship in each column)
+		this.shooters.clear();
+		for (List<EnemyShip> column : this.enemyShips) {
+			if (!column.isEmpty()) {
+				this.shooters.add(column.get(column.size() - 1));
+			}
+		}
+		this.shipCount = 0;
+		for (List<EnemyShip> col : enemyShips) this.shipCount += col.size();
 	}
 
-    /**
-     * Constructor that uses Level directly (without GameSettings).
-     * @param level Current level data.
-     */
-    public EnemyShipFormation(final Level level) {
-        this.drawManager = Core.getDrawManager();
-        this.logger = Core.getLogger();
-        this.enemyShips = new ArrayList<List<EnemyShip>>();
-        this.currentDirection = Direction.DOWN_RIGHT;
-        this.movementInterval = 0;
+	/**
+	 * Creates a standard rectangular formation based on dimensions.
+	 * Used for Classic Mode.
+	 * * @param width Number of columns.
+	 * @param height Number of rows.
+	 */
+	private void createStandardFormation(int width, int height) {
+		for (int i = 0; i < width; i++) {
+			this.enemyShips.add(new ArrayList<EnemyShip>());
+			for (int j = 0; j < height; j++) {
+				SpriteType spriteType = calculateSpriteType(j);
+				int x = 100 + (i * 48);
+				int y = 100 + (j * 32);
+				EnemyShip ship = new EnemyShip(x, y, spriteType);
+				this.enemyShips.get(i).add(ship);
+				this.shipCount++;
+			}
+		}
+	}
 
-        // Read values directly from Level
-        this.nShipsWide = level.getFormationWidth();
-        this.nShipsHigh = level.getFormationHeight();
-        this.shootingInterval = level.getShootingFrecuency();
-        this.shootingVariance = (int) (level.getShootingFrecuency() * SHOOTING_VARIANCE);
-        this.baseSpeed = level.getBaseSpeed();
-        this.movementSpeed = this.baseSpeed;
-        this.positionX = INIT_POS_X;
-        this.positionY = INIT_POS_Y;
-        this.shooters = new ArrayList<EnemyShip>();
-        this.levelObj = level;
-        SpriteType spriteType;
+	/**
+	 * Creates a rectangular formation using Level data.
+	 * Ensures correct enemy types are used.
+	 * * @param level Level data.
+	 */
+	private void createRectangularFormationFromLevel(Level level) {
+		int width = level.getFormationWidth();
+		int height = level.getFormationHeight();
 
-        this.logger.info("Initializing " + nShipsWide + "x" + nShipsHigh
-                + " ship formation in (" + positionX + "," + positionY + ")");
+		List<SpriteType> spriteQueue = buildLayeredQueueFromLevel(level, width, height);
+		int qIndex = 0;
 
-        // Each sub-list is a column on the formation.
-        for (int i = 0; i < this.nShipsWide; i++)
-            this.enemyShips.add(new ArrayList<EnemyShip>());
+		for (int i = 0; i < width; i++) {
+			this.enemyShips.add(new ArrayList<EnemyShip>());
+			for (int j = 0; j < height; j++) {
+				SpriteType spriteType;
+				if (qIndex < spriteQueue.size()) spriteType = spriteQueue.get(qIndex++);
+				else spriteType = SpriteType.EnemyShipA1;
 
-        final int cells = this.nShipsWide * this.nShipsHigh;
-        List<SpriteType> spriteQueue = buildLayeredQueueFromLevel(level, this.nShipsWide, this.nShipsHigh);
-        boolean useQueue = (spriteQueue != null && spriteQueue.size() == cells);
-        int qIndex = 0;
+				int x = (SEPARATION_DISTANCE * i) + positionX;
+				int y = (SEPARATION_DISTANCE * j) + positionY;
 
-        for (List<EnemyShip> column : this.enemyShips) {
-            for (int i = 0; i < this.nShipsHigh; i++) {
-                SpriteType chosen;
-                if (useQueue) {
-                    chosen = spriteQueue.get(qIndex++);
-                } else {
-                    // Fallback: legacy proportion-based selection
-                    if (i / (float) this.nShipsHigh < PROPORTION_C)
-                        chosen = SpriteType.EnemyShipC1;
-                    else if (i / (float) this.nShipsHigh < PROPORTION_B + PROPORTION_C)
-                        chosen = SpriteType.EnemyShipB1;
-                    else
-                        chosen = SpriteType.EnemyShipA1;
-                }
+				EnemyShip ship = new EnemyShip(x, y, spriteType);
+				this.enemyShips.get(i).add(ship);
+				this.shipCount++;
+			}
+		}
+	}
 
-                column.add(new EnemyShip(
-                        (SEPARATION_DISTANCE * this.enemyShips.indexOf(column)) + positionX,
-                        (SEPARATION_DISTANCE * i) + positionY,
-                        chosen));
-                this.shipCount++;
-            }
-        }
+	/**
+	 * Creates a circular (donut) formation.
+	 * * @param level Level data.
+	 */
+	private void createCircleFormation(Level level) {
+		int totalShips = 16;
+		int centerX = 224;
+		int centerY = 180;
+		int radius = 100;
 
-        this.shipWidth = this.enemyShips.get(0).get(0).getWidth();
-        this.shipHeight = this.enemyShips.get(0).get(0).getHeight();
+		List<SpriteType> spriteQueue = buildLayeredQueueFromLevel(level, totalShips, 1);
+		int qIndex = 0;
 
-        this.width = (this.nShipsWide - 1) * SEPARATION_DISTANCE + this.shipWidth;
-        this.height = (this.nShipsHigh - 1) * SEPARATION_DISTANCE + this.shipHeight;
+		for (int i = 0; i < totalShips; i++) {
+			// In circular formation, each ship gets its own column to act as a shooter.
+			this.enemyShips.add(new ArrayList<EnemyShip>());
 
-        for (List<EnemyShip> column : this.enemyShips)
-            this.shooters.add(column.get(column.size() - 1));
-    }
+			double angle = (2 * Math.PI / totalShips) * i;
+			int x = (int) (centerX + radius * Math.cos(angle));
+			int y = (int) (centerY + radius * Math.sin(angle));
+
+			SpriteType type = (qIndex < spriteQueue.size()) ? spriteQueue.get(qIndex++) : SpriteType.EnemyShipA1;
+
+			EnemyShip ship = new EnemyShip(x, y, type);
+			this.enemyShips.get(i).add(ship);
+			this.shipCount++;
+		}
+	}
+
+	/**
+	 * Creates an inverted triangle formation.
+	 * * @param level Level data.
+	 */
+	private void createTriangleFormation(Level level) {
+		int rows = 5;
+		int startY = 80;
+		int centerX = 224;
+
+		// Estimate total ships
+		int totalShipsEstimate = 0;
+		for(int i=0; i<rows; i++) totalShipsEstimate += ((rows - i) * 2 - 1);
+		List<SpriteType> spriteQueue = buildLayeredQueueFromLevel(level, totalShipsEstimate, 1);
+		int qIndex = 0;
+
+		for (int i = 0; i < rows; i++) {
+			int shipsInRow = (rows - i) * 2 - 1;
+			int startX = centerX - (shipsInRow * 24) + 24; // Center alignment correction
+
+			for (int j = 0; j < shipsInRow; j++) {
+				this.enemyShips.add(new ArrayList<EnemyShip>()); // New column
+				int colIdx = this.enemyShips.size() - 1;
+
+				int x = startX + (j * 48);
+				int y = startY + (i * 40);
+
+				SpriteType type = (qIndex < spriteQueue.size()) ? spriteQueue.get(qIndex++) : SpriteType.EnemyShipA1;
+
+				EnemyShip ship = new EnemyShip(x, y, type);
+				this.enemyShips.get(colIdx).add(ship);
+				this.shipCount++;
+			}
+		}
+	}
+
+	/**
+	 * Creates a V-shape formation.
+	 * * @param level Level data.
+	 */
+	private void createVShapeFormation(Level level) {
+		int wings = 7;
+		int centerX = 224;
+		int startY = 80;
+
+		List<SpriteType> spriteQueue = buildLayeredQueueFromLevel(level, wings * 2 + 1, 1);
+		int qIndex = 0;
+
+		// Center Vertex
+		this.enemyShips.add(new ArrayList<EnemyShip>());
+		SpriteType centerType = (qIndex < spriteQueue.size()) ? spriteQueue.get(qIndex++) : SpriteType.EnemyShipC1;
+		this.enemyShips.get(0).add(new EnemyShip(centerX, startY + 140, centerType));
+		this.shipCount++;
+
+		for (int i = 1; i <= wings; i++) {
+			int offsetX = i * 30;
+			int offsetY = i * 20;
+
+			// Left Wing
+			this.enemyShips.add(new ArrayList<EnemyShip>());
+			SpriteType typeL = (qIndex < spriteQueue.size()) ? spriteQueue.get(qIndex++) : SpriteType.EnemyShipB1;
+			this.enemyShips.get(this.enemyShips.size()-1).add(new EnemyShip(centerX - offsetX, startY + 140 - offsetY, typeL));
+			this.shipCount++;
+
+			// Right Wing
+			this.enemyShips.add(new ArrayList<EnemyShip>());
+			SpriteType typeR = (qIndex < spriteQueue.size()) ? spriteQueue.get(qIndex++) : SpriteType.EnemyShipB1;
+			this.enemyShips.get(this.enemyShips.size()-1).add(new EnemyShip(centerX + offsetX, startY + 140 - offsetY, typeR));
+			this.shipCount++;
+		}
+	}
+
+	/**
+	 * Creates a randomly scattered formation.
+	 * * @param level Level data.
+	 */
+	private void createRandomFormation(Level level) {
+		int totalShips = 15;
+		Random r = new Random();
+		List<SpriteType> spriteQueue = buildLayeredQueueFromLevel(level, totalShips, 1);
+
+		for(int i=0; i<totalShips; i++) {
+			this.enemyShips.add(new ArrayList<EnemyShip>());
+			int x = 50 + r.nextInt(350);
+			int y = 80 + r.nextInt(200);
+
+			SpriteType type = (i < spriteQueue.size()) ? spriteQueue.get(i) : SpriteType.values()[4 + r.nextInt(3)];
+
+			EnemyShip ship = new EnemyShip(x, y, type);
+			this.enemyShips.get(i).add(ship);
+			this.shipCount++;
+		}
+	}
+
+	/**
+	 * Determines sprite type based on row index (Legacy).
+	 * @param row Row index.
+	 * @return SpriteType.
+	 */
+	private SpriteType calculateSpriteType(int row) {
+		switch (row) {
+			case 0: return SpriteType.EnemyShipC1;
+			case 1: return SpriteType.EnemyShipB1;
+			default: return SpriteType.EnemyShipA1;
+		}
+	}
 
 	/**
 	 * Associates the formation to a given screen.
 	 *
 	 * @param newScreen
-	 *            Screen to attach.
+	 * Screen to attach.
 	 */
 	public final void attach(final Screen newScreen) {
 		screen = newScreen;
@@ -294,76 +480,64 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		if (movementInterval >= this.movementSpeed) {
 			movementInterval = 0;
 
-            updateSlowdown();
+			updateSlowdown();
 
 			boolean isAtBottom = positionY
 					+ this.height > GameScreen.getItemsSeparationLineHeight();
 			boolean isAtRightSide = positionX
 					+ this.width >= screen.getWidth() - SIDE_MARGIN;
 			boolean isAtLeftSide = positionX <= SIDE_MARGIN;
-            boolean isAtTop = positionY <= INIT_POS_Y;
+			boolean isAtTop = positionY <= INIT_POS_Y;
 
-            // Diagonal movement direction change logic
-            if (currentDirection == Direction.DOWN_RIGHT) {
-                if (isAtBottom && isAtRightSide) {
-                    currentDirection = Direction.UP_LEFT;
-                    this.logger.info("Formation now moving up-left (hit corner)");
-                } else if (isAtBottom) {
-                    currentDirection = Direction.UP_RIGHT;
-                    this.logger.info("Formation now moving up-right (hit bottom)");
-                } else if (isAtRightSide) {
-                    currentDirection = Direction.DOWN_LEFT;
-                    this.logger.info("Formation now moving down-left (hit right wall)");
-                }
-            } else if (currentDirection == Direction.DOWN_LEFT) {
-                if (isAtBottom && isAtLeftSide) {
-                    currentDirection = Direction.UP_RIGHT;
-                    this.logger.info("Formation now moving up-right (hit corner)");
-                } else if (isAtBottom) {
-                    currentDirection = Direction.UP_LEFT;
-                    this.logger.info("Formation now moving up-left (hit bottom)");
-                } else if (isAtLeftSide) {
-                    currentDirection = Direction.DOWN_RIGHT;
-                    this.logger.info("Formation now moving down-right (hit left wall)");
-                }
-            } else if (currentDirection == Direction.UP_RIGHT) {
-                if (isAtTop && isAtRightSide) {
-                    currentDirection = Direction.DOWN_LEFT;
-                    this.logger.info("Formation now moving down-left (hit corner)");
-                } else if (isAtTop) {
-                    currentDirection = Direction.DOWN_RIGHT;
-                    this.logger.info("Formation now moving down-right (back to top)");
-                } else if (isAtRightSide) {
-                    currentDirection = Direction.UP_LEFT;
-                    this.logger.info("Formation now moving up-left (hit right wall)");
-                }
-            } else if (currentDirection == Direction.UP_LEFT) {
-                if (isAtTop && isAtLeftSide) {
-                    currentDirection = Direction.DOWN_RIGHT;
-                    this.logger.info("Formation now moving down-right (hit corner)");
-                } else if (isAtTop) {
-                    currentDirection = Direction.DOWN_LEFT;
-                    this.logger.info("Formation now moving down-left (back to top)");
-                } else if (isAtLeftSide) {
-                    currentDirection = Direction.UP_RIGHT;
-                    this.logger.info("Formation now moving up-right (hit left wall)");
-                }
-            }
+			// Diagonal movement direction change logic
+			if (currentDirection == Direction.DOWN_RIGHT) {
+				if (isAtBottom && isAtRightSide) {
+					currentDirection = Direction.UP_LEFT;
+				} else if (isAtBottom) {
+					currentDirection = Direction.UP_RIGHT;
+				} else if (isAtRightSide) {
+					currentDirection = Direction.DOWN_LEFT;
+				}
+			} else if (currentDirection == Direction.DOWN_LEFT) {
+				if (isAtBottom && isAtLeftSide) {
+					currentDirection = Direction.UP_RIGHT;
+				} else if (isAtBottom) {
+					currentDirection = Direction.UP_LEFT;
+				} else if (isAtLeftSide) {
+					currentDirection = Direction.DOWN_RIGHT;
+				}
+			} else if (currentDirection == Direction.UP_RIGHT) {
+				if (isAtTop && isAtRightSide) {
+					currentDirection = Direction.DOWN_LEFT;
+				} else if (isAtTop) {
+					currentDirection = Direction.DOWN_RIGHT;
+				} else if (isAtRightSide) {
+					currentDirection = Direction.UP_LEFT;
+				}
+			} else if (currentDirection == Direction.UP_LEFT) {
+				if (isAtTop && isAtLeftSide) {
+					currentDirection = Direction.DOWN_RIGHT;
+				} else if (isAtTop) {
+					currentDirection = Direction.DOWN_LEFT;
+				} else if (isAtLeftSide) {
+					currentDirection = Direction.UP_RIGHT;
+				}
+			}
 
-            int currentXSpeed = getCurrentXSpeed();
-            if (currentDirection == Direction.DOWN_RIGHT) {
-                movementX = currentXSpeed;   // right
-                movementY = Y_SPEED;   // down
-            } else if (currentDirection == Direction.DOWN_LEFT) {
-                movementX = -currentXSpeed;  // left
-                movementY = Y_SPEED;   // down
-            } else if (currentDirection == Direction.UP_RIGHT) {
-                movementX = currentXSpeed;   // right
-                movementY = -Y_SPEED;  // up
-            } else if (currentDirection == Direction.UP_LEFT) {
-                movementX = -currentXSpeed;  // left
-                movementY = -Y_SPEED;  // up
-            }
+			int currentXSpeed = getCurrentXSpeed();
+			if (currentDirection == Direction.DOWN_RIGHT) {
+				movementX = currentXSpeed;   // right
+				movementY = Y_SPEED;   // down
+			} else if (currentDirection == Direction.DOWN_LEFT) {
+				movementX = -currentXSpeed;  // left
+				movementY = Y_SPEED;   // down
+			} else if (currentDirection == Direction.UP_RIGHT) {
+				movementX = currentXSpeed;   // right
+				movementY = -Y_SPEED;  // up
+			} else if (currentDirection == Direction.UP_LEFT) {
+				movementX = -currentXSpeed;  // left
+				movementY = -Y_SPEED;  // up
+			}
 
 			positionX += movementX;
 			positionY += movementY;
@@ -375,12 +549,8 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 				for (EnemyShip ship : column) {
 					if (ship != null && ship.isExplosionFinished()) {
 						destroyed.add(ship);
-						this.logger.info("Removed enemy "
-								+ column.indexOf(ship) + " from column "
-								+ this.enemyShips.indexOf(column));
 					}
 				}
-
 				column.removeAll(destroyed);
 			}
 
@@ -414,7 +584,6 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		}
 		for (int index : emptyColumns) {
 			this.enemyShips.remove(index);
-			logger.info("Removed column " + index);
 		}
 
 		int leftMostPoint = 0;
@@ -439,18 +608,18 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 * Shoots a bullet downwards.
 	 *
 	 * @param bullets
-	 *            Bullets set to add the bullet being shot.
+	 * Bullets set to add the bullet being shot.
 	 */
 	public final void shoot(final Set<Bullet> bullets) {
-		// For now, only ships in the bottom row are able to shoot.
-		if (this.shooters.isEmpty()) {return; }
-		int index = (int) (Math.random() * this.shooters.size());
-		EnemyShip shooter = this.shooters.get(index);
-
+		this.shooters.removeIf(EnemyShip::isDestroyed);
+		if (this.shooters.isEmpty()) return;
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
-			bullets.add(BulletPool.getBullet(shooter.getPositionX()
-					+ shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+			int index = (int) (Math.random() * this.shooters.size());
+			EnemyShip shooter = this.shooters.get(index);
+			if (!shooter.isDestroyed()) {
+				bullets.add(BulletPool.getBullet(shooter.getPositionX() + shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+			}
 		}
 	}
 
@@ -458,7 +627,7 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 * Destroys a ship.
 	 *
 	 * @param destroyedShip
-	 *            Ship to be destroyed.
+	 * Ship to be destroyed.
 	 */
 	public final void destroy(final EnemyShip destroyedShip) {
 		for (List<EnemyShip> column : this.enemyShips)
@@ -499,7 +668,7 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 * Gets the ship on a given column that will be in charge of shooting.
 	 *
 	 * @param column
-	 *            Column to search.
+	 * Column to search.
 	 * @return New shooter ship.
 	 */
 	public final EnemyShip getNextShooter(final List<EnemyShip> column) {
@@ -552,49 +721,54 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 
 	/**
 	 * Checks if there are any ships remaining.
-	 *
-	 * @return True when all ships have been destroyed.
+	 * * @return True if formation is empty.
 	 */
 	public final boolean isEmpty() {
-		return this.shipCount <= 0;
+		for (List<EnemyShip> column : this.enemyShips) {
+			for (EnemyShip ship : column) {
+				if (!ship.isDestroyed()) return false;
+			}
+		}
+		return true;
 	}
 
-    /**
-     * Activates slowdown effect on the formation.
-     */
-    public void activateSlowdown() {
-        this.isSlowedDown = true;
-        this.slowDownCount = 0;
-        this.logger.info("Enemy formation slowed down!");
-    }
+	/**
+	 * Activates the slowdown effect on the formation.
+	 */
+	public void activateSlowdown() {
+		this.isSlowedDown = true;
+		this.slowDownCount = 0;
+		this.logger.info("Enemy formation slowed down!");
+	}
 
-    /**
-     * Gets the current movement speed based on slowdown status.
-     *
-     * @return Current X_SPEED value
-     */
-    private int getCurrentXSpeed() {
-        if (isSlowedDown) {
-            return SLOWED_X_SPEED;
-        }
-        return ORIGINAL_X_SPEED;
-    }
+	/**
+	 * Gets the current horizontal speed based on slowdown status.
+	 * @return Current X speed.
+	 */
+	private int getCurrentXSpeed() {
+		if (isSlowedDown) {
+			return SLOWED_X_SPEED;
+		}
+		return ORIGINAL_X_SPEED;
+	}
 
-    /**
-     * Updates slowdown counter and checks if effect should end.
-     * Call this in the update() method when formation moves.
-     */
-    private void updateSlowdown() {
-        if (isSlowedDown) {
-            slowDownCount++;
-            if (slowDownCount >= SLOWDOWN_DURATION) {
-                isSlowedDown = false;
-                slowDownCount = 0;
-                this.logger.info("Slowdown effect ended.");
-            }
-        }
-    }
+	/**
+	 * Updates the slowdown effect timer.
+	 */
+	private void updateSlowdown() {
+		if (isSlowedDown) {
+			slowDownCount++;
+			if (slowDownCount >= SLOWDOWN_DURATION) {
+				isSlowedDown = false;
+				slowDownCount = 0;
+				this.logger.info("Slowdown effect ended.");
+			}
+		}
+	}
 
+	/**
+	 * Clears the formation (removes all ships).
+	 */
 	public final void clear() {
 		for (List<EnemyShip> column : this.enemyShips) {
 			column.clear();
@@ -603,99 +777,88 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		this.shipCount = 0;
 	}
 
-   private List<SpriteType> buildLayeredQueueFromLevel(final Level level, final int width, final int height) {
-        final int cells = width * height;
-        List<SpriteType> rowMajor = new ArrayList<>(cells);
+	/**
+	 * Constructs a queue of sprite types based on level data.
+	 * Ensures distribution matches enemy counts defined in the Level.
+	 * * @param level Current Level data.
+	 * @param width Formation width.
+	 * @param height Formation height.
+	 * @return List of SpriteTypes.
+	 */
+	private List<SpriteType> buildLayeredQueueFromLevel(final Level level, final int width, final int height) {
+		final int cells = width * height;
+		List<SpriteType> rowMajor = new ArrayList<>(cells);
 
-        if (level == null || level.getEnemyTypes() == null || level.getEnemyTypes().isEmpty()) {
-            return new ArrayList<>(); // empty -> caller will fallback
-        }
+		if (level == null || level.getEnemyTypes() == null || level.getEnemyTypes().isEmpty()) {
+			return new ArrayList<>();
+		}
 
-        int countA = 0, countB = 0, countC = 0;
-        for (engine.level.EnemyType t : level.getEnemyTypes()) {
-            String kind = (t.getType() == null) ? "enemya" : t.getType().trim().toLowerCase();
-            int cnt = Math.max(0, t.getCount());
-            switch (kind) {
-                case "enemya":
-                case "a":
-                    countA += cnt; break;
-                case "enemyb":
-                case "b":
-                    countB += cnt; break;
-                case "enemyc":
-                case "c":
-                    countC += cnt; break;
-                default:
-                    countA += cnt;
-            }
-        }
+		int countA = 0, countB = 0, countC = 0;
+		for (engine.level.EnemyType t : level.getEnemyTypes()) {
+			String kind = (t.getType() == null) ? "enemya" : t.getType().trim().toLowerCase();
+			int cnt = Math.max(0, t.getCount());
+			switch (kind) {
+				case "enemya": case "a": countA += cnt; break;
+				case "enemyb": case "b": countB += cnt; break;
+				case "enemyc": case "c": countC += cnt; break;
+				default: countA += cnt;
+			}
+		}
 
-        int total = countA + countB + countC;
-        if (total < cells) countA += (cells - total);
+		int total = countA + countB + countC;
+		// Pad with type A if counts don't match total cells
+		if (total < cells) countA += (cells - total);
 
+		// Distribute types (Strongest first generally implies top rows)
+		for(int k=0; k<countC; k++) rowMajor.add(SpriteType.EnemyShipC1);
+		for(int k=0; k<countB; k++) rowMajor.add(SpriteType.EnemyShipB1);
+		for(int k=0; k<countA; k++) rowMajor.add(SpriteType.EnemyShipA1);
 
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                if (countC > 0) {
-                    rowMajor.add(SpriteType.EnemyShipC1);
-                    countC--;
-                } else if (countB > 0) {
-                    rowMajor.add(SpriteType.EnemyShipB1);
-                    countB--;
-                } else if (countA > 0) {
-                    rowMajor.add(SpriteType.EnemyShipA1);
-                    countA--;
-                } else {
-                    // Safety pad
-                    rowMajor.add(SpriteType.EnemyShipA1);
-                }
-            }
-        }
+		return rowMajor;
+	}
 
-        // Convert to column-major order because constructor consumes by column then row.
-        List<SpriteType> columnMajor = new ArrayList<>(cells);
-        for (int col = 0; col < width; col++) {
-            for (int row = 0; row < height; row++) {
-                columnMajor.add(rowMajor.get(row * width + col));
-            }
-        }
+	/**
+	 * Applies a specific color to all ships in the formation.
+	 * @param color Target color.
+	 */
+	public void applyEnemyColor(final Color color) {
+		for (java.util.List<EnemyShip> column : this.enemyShips) {
+			for (EnemyShip ship : column) {
+				if (ship != null && !ship.isDestroyed()) {
+					ship.setColor(color);
+				}
+			}
+		}
+	}
 
-        // Clamp/pad to exact cells size for safety.
-        if (columnMajor.size() > cells) {
-            return new ArrayList<>(columnMajor.subList(0, cells));
-        }
-        while (columnMajor.size() < cells) {
-            columnMajor.add(SpriteType.EnemyShipA1);
-        }
-        return columnMajor;
-    }
-    public void applyEnemyColor(final Color color) {
-        for (java.util.List<EnemyShip> column : this.enemyShips) {
-            for (EnemyShip ship : column) {
-                if (ship != null && !ship.isDestroyed()) {
-                    ship.setColor(color);
-                }
-            }
-        }
-    }
-    public void applyEnemyColorByLevel(final Level level) {
-        if (level == null) return;
-        final int lv = level.getLevel();
-        applyEnemyColor(getColorForLevel(lv));
-    }
-    private Color getColorForLevel(final int levelNumber) {
-        switch (levelNumber) {
-            case 1: return new Color(0x3DDC84); // green
-            case 2: return new Color(0x00BCD4); // cyan
-            case 3: return new Color(0xFF4081); // pink
-            case 4: return new Color(0xFFC107); // amber
-            case 5: return new Color(0x9C27B0); // purple
-            case 6: return new Color(0xFF5722); // deep orange
-            case 7: return new Color(0x8BC34A); // light green
-            case 8: return new Color(0x03A9F4); // light blue
-            case 9: return new Color(0xE91E63); // magenta
-            case 10: return new Color(0x607D8B); // blue gray
-            default: return Color.WHITE;
-        }
-    }
+	/**
+	 * Applies color based on the current level number.
+	 * @param level Level object.
+	 */
+	public void applyEnemyColorByLevel(final Level level) {
+		if (level == null) return;
+		final int lv = level.getLevel();
+		applyEnemyColor(getColorForLevel(lv));
+	}
+
+	/**
+	 * Returns a color corresponding to the level number.
+	 * @param levelNumber Level index.
+	 * @return Color object.
+	 */
+	private Color getColorForLevel(final int levelNumber) {
+		switch (levelNumber) {
+			case 1: return new Color(0x3DDC84); // green
+			case 2: return new Color(0x00BCD4); // cyan
+			case 3: return new Color(0xFF4081); // pink
+			case 4: return new Color(0xFFC107); // amber
+			case 5: return new Color(0x9C27B0); // purple
+			case 6: return new Color(0xFF5722); // deep orange
+			case 7: return new Color(0x8BC34A); // light green
+			case 8: return new Color(0x03A9F4); // light blue
+			case 9: return new Color(0xE91E63); // magenta
+			case 10: return new Color(0x607D8B); // blue gray
+			default: return Color.WHITE;
+		}
+	}
 }

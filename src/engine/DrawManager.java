@@ -32,44 +32,76 @@ import screen.TitleScreen.ShootingStar;
  */
 public final class DrawManager {
 
-	/** Singleton instance of the class. */
+	/**
+	 * Singleton instance of the class.
+	 */
 	private static DrawManager instance;
-	/** Current frame. */
+	/**
+	 * Current frame.
+	 */
 	private static Frame frame;
-	/** FileManager instance. */
+	/**
+	 * FileManager instance.
+	 */
 	private static FileManager fileManager;
-	/** Application logger. */
+	/**
+	 * Application logger.
+	 */
 	private static final Logger logger = Core.getLogger();
-	/** Graphics context. */
+	/**
+	 * Graphics context.
+	 */
 	private static Graphics graphics;
-	/** Buffer Graphics. */
+	/**
+	 * Buffer Graphics.
+	 */
 	private static Graphics backBufferGraphics;
-	/** Buffer image. */
+	/**
+	 * Buffer image.
+	 */
 	private static BufferedImage backBuffer;
-	/** Normal sized font. */
+	/**
+	 * Normal sized font.
+	 */
 	private static Font fontRegular;
-	/** Normal sized font properties. */
+	/**
+	 * Normal sized font properties.
+	 */
 	private static FontMetrics fontRegularMetrics;
-	/** Big sized font. */
+	/**
+	 * Big sized font.
+	 */
 	private static Font fontBig;
-	/** Big sized font properties. */
+	/**
+	 * Big sized font properties.
+	 */
 	private static FontMetrics fontBigMetrics;
-	/** Small sized font for credits. */
-    private static Font fontSmall;
-    /** Small sized font properties. */
-    private static FontMetrics fontSmallMetrics;
-    /** Pause menu animation state. */
-    private static long lastPauseMenuDrawTime = 0L;
-    private static float pauseMenuAnimProgress = 1f;
+	/**
+	 * Small sized font for credits.
+	 */
+	private static Font fontSmall;
+	/**
+	 * Small sized font properties.
+	 */
+	private static FontMetrics fontSmallMetrics;
+	/**
+	 * Pause menu animation state.
+	 */
+	private static long lastPauseMenuDrawTime = 0L;
+	private static float pauseMenuAnimProgress = 1f;
 
-	/** Sprite types mapped to their images. */
+	/**
+	 * Sprite types mapped to their images.
+	 */
 	private static Map<SpriteType, boolean[][]> spriteMap;
 
-	/** Sprite types. */
+	/**
+	 * Sprite types.
+	 */
 	public static enum SpriteType {
 		Ship, ShipDestroyed, Bullet, EnemyBullet, EnemyShipA1, EnemyShipA2,
 		EnemyShipB1, EnemyShipB2, EnemyShipC1, EnemyShipC2, EnemyShipSpecial,
-		FinalBoss1, FinalBoss2,FinalBossBullet,FinalBossDeath,OmegaBoss1, OmegaBoss2,OmegaBossDeath, Explosion, SoundOn, SoundOff, Item_MultiShot,
+		FinalBoss1, FinalBoss2, FinalBossBullet, FinalBossDeath, OmegaBoss1, OmegaBoss2, OmegaBossDeath, Explosion, SoundOn, SoundOff, Item_MultiShot,
 		Item_Atkspeed, Item_Penetrate, Item_Explode, Item_Slow, Item_Stop,
 		Item_Push, Item_Shield, Item_Heal,
 		SamuraiNormal, SamuraiAttack, SamuraiBroken, SwordWave, DeathblowMarker,
@@ -107,7 +139,7 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.Item_Heal, new boolean[5][5]);
 			spriteMap.put(SpriteType.FinalBoss1, new boolean[50][40]);
 			spriteMap.put(SpriteType.FinalBoss2, new boolean[50][40]);
-			spriteMap.put(SpriteType.FinalBossBullet,new boolean[3][5]);
+			spriteMap.put(SpriteType.FinalBossBullet, new boolean[3][5]);
 			spriteMap.put(SpriteType.FinalBossDeath, new boolean[50][40]);
 			spriteMap.put(SpriteType.OmegaBoss1, new boolean[32][14]);
 			spriteMap.put(SpriteType.OmegaBoss2, new boolean[32][14]);
@@ -182,6 +214,10 @@ public final class DrawManager {
 
 	/**
 	 * Draws an entity.
+	 * Handles specific drawing logic for different entity types (e.g. Samurai Boss).
+	 * * @param entity Entity to be drawn.
+	 * @param positionX X coordinate.
+	 * @param positionY Y coordinate.
 	 */
 	public void drawEntity(final Entity entity, final int positionX, final int positionY) {
 		SpriteType type = entity.getSpriteType();
@@ -191,9 +227,30 @@ public final class DrawManager {
 			return;
 		}
 
+		// Special handling for Samurai Boss (uses Image sprite instead of boolean array)
+		if (entity instanceof entity.SamuraiBoss) {
+			entity.SamuraiBoss boss = (entity.SamuraiBoss) entity;
+			if (boss.getSprite() != null) {
+				backBufferGraphics.drawImage(
+						boss.getSprite(),
+						positionX,
+						positionY,
+						boss.getWidth(),
+						boss.getHeight(),
+						null
+				);
+			}
+			return;
+		}
 		boolean[][] image = spriteMap.get(type);
 		if (image == null) {
 			logger.warning("SpriteType " + type + " is null in spriteMap.");
+			backBufferGraphics.setColor(entity.getColor());
+			backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
+			return;
+		}
+
+		if (type == null) {
 			backBufferGraphics.setColor(entity.getColor());
 			backBufferGraphics.fillRect(positionX, positionY, entity.getWidth(), entity.getHeight());
 			return;
@@ -204,6 +261,8 @@ public final class DrawManager {
 			for (int j = 0; j < image[i].length; j++)
 				if (image[i][j])
 					backBufferGraphics.drawRect(positionX + i * 2, positionY + j * 2, 1, 1);
+
+
 	}
 
 	/**
@@ -315,6 +374,7 @@ public final class DrawManager {
 		String scoreString = String.format("P1:%04d", score);
 		backBufferGraphics.drawString(scoreString, screen.getWidth() - 120, 25);
 	}
+
 	//  === [ADD] Draw P2's score on the line below P1's score ===
 	public void drawScoreP2(final Screen screen, final int scoreP2) {
 		backBufferGraphics.setFont(fontRegular);
@@ -359,7 +419,7 @@ public final class DrawManager {
 		backBufferGraphics.setColor(Color.WHITE);
 		// backBufferGraphics.drawString("P1:" + Integer.toString(lives), 10, 25);
 		backBufferGraphics.drawString("P1:", 15, 25);
-		Ship dummyShip = new Ship(0, 0,Color.green);
+		Ship dummyShip = new Ship(0, 0, Color.green);
 		for (int i = 0; i < lives; i++)
 			drawEntity(dummyShip, 40 + 35 * i, 10);
 	}
@@ -370,7 +430,7 @@ public final class DrawManager {
 		// backBufferGraphics.drawString("P2:" + Integer.toString(lives), 10, 40);
 		backBufferGraphics.drawString("P2:", 15, 40);
 
-		Ship dummyShip = new Ship(0, 0,Color.pink);
+		Ship dummyShip = new Ship(0, 0, Color.pink);
 		for (int i = 0; i < lives; i++) {
 			drawEntity(dummyShip, 40 + 35 * i, 30);
 		}
@@ -457,6 +517,53 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Draws the True Final Boss
+	 */
+	public void drawTrueFinalBoss(screen.Screen screen, entity.TrueFinalBoss boss) {
+		if (boss.getSprite() != null) {
+			// Central alignment coordinate calculation
+			int offsetX = (boss.getDrawWidth() - boss.getWidth()) / 2;
+			int offsetY = (boss.getDrawHeight() - boss.getHeight()) / 2;
+
+			int drawX = boss.getPositionX() - offsetX;
+			int drawY = boss.getPositionY() - offsetY;
+
+			// Draw image
+			backBufferGraphics.drawImage(
+					boss.getSprite(),
+					drawX,
+					drawY,
+					boss.getDrawWidth(),
+					boss.getDrawHeight(),
+					null
+			);
+		} else {
+			// Fallback if no sprite (Black rectangle)
+			backBufferGraphics.setColor(Color.BLACK);
+			backBufferGraphics.fillRect(boss.getPositionX(), boss.getPositionY(), boss.getWidth(), boss.getHeight());
+		}
+
+		// [Draw Laser Warning Lines]
+		if (boss.isLaserWarningActive()) {
+			for (float angle : boss.getWarningAngles()) {
+				drawLaserWarningLine(boss.getWarningOriginX(), boss.getWarningOriginY(), angle, Color.RED);
+			}
+		}
+
+		// [Draw UI] Health Bar & Posture Bar
+		if (screen != null) {
+			drawBossHealthBar(screen, boss.getHealPoint(), boss.getMaxHealth());
+			// Posture Bar (Orange)
+			drawBossPostureBar(screen, boss.getPosture(), boss.getMaxPosture());
+
+			// Deathblow Marker
+			if (boss.isPostureBroken()) {
+				drawDeathblowMarker(screen, boss.getPositionX() + boss.getWidth()/2, boss.getPositionY() + boss.getHeight()/2);
+			}
+		}
+	}
+
+	/**
 	 * Draws main menu.
 	 */
 	public void drawMenu(final Screen screen, final int option) {
@@ -483,7 +590,7 @@ public final class DrawManager {
 		else backBufferGraphics.setColor(Color.WHITE);
 		drawCenteredRegularString(screen, achievementsString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 2);
 
-        if (option == 9) backBufferGraphics.setColor(pulseColor);
+        if (option == 7) backBufferGraphics.setColor(pulseColor);
         else backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, settingsString, screen.getHeight() / 3 * 2 + fontRegularMetrics.getHeight() * 3);
 
@@ -1044,260 +1151,352 @@ public final class DrawManager {
 		drawEntity(new Ship(0, 0, twoPColor), shipX2a, shipY2);
 		drawEntity(new Ship(0, 0, twoPColor), shipX2b, shipY2);
 
-        backBufferGraphics.setColor(Color.GRAY);
-        drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
-    }
+		backBufferGraphics.setColor(Color.GRAY);
+		drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+	}
 	public void drawLaserBeam(LaserBeam beam) {
-        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+		Graphics2D g2 = (Graphics2D) backBufferGraphics;
 
-        float alpha = beam.getAlphaFactor();
-        if (alpha <= 0f) return;
+		float alpha = beam.getAlphaFactor();
+		if (alpha <= 0f) return;
 
-        // Save state
-        Stroke oldStroke = g2.getStroke();
-        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		// Save state
+		Stroke oldStroke = g2.getStroke();
+		Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Two-layer beam: soft glow + bright core
-        Color glowColor = new Color(0f, 1f, 1f, Math.min(1f, alpha * 0.55f));
-        Color coreColor = new Color(0.85f, 1f, 1f, Math.min(1f, alpha * 1.1f));
+		// Two-layer beam: soft glow + bright core
+		Color glowColor = new Color(0f, 1f, 1f, Math.min(1f, alpha * 0.55f));
+		Color coreColor = new Color(0.85f, 1f, 1f, Math.min(1f, alpha * 1.1f));
 
-        float x1 = beam.getOriginX();
-        float y1 = beam.getOriginY();
+		float x1 = beam.getOriginX();
+		float y1 = beam.getOriginY();
 
-        float angle = beam.getAngle();
-        float length = beam.getLength();
-        float thickness = beam.getThickness();
+		float angle = beam.getAngle();
+		float length = beam.getLength();
+		float thickness = beam.getThickness();
 
-        float x2 = (float)(x1 + Math.cos(angle) * length);
-        float y2 = (float)(y1 + Math.sin(angle) * length);
+		float x2 = (float)(x1 + Math.cos(angle) * length);
+		float y2 = (float)(y1 + Math.sin(angle) * length);
 
-        // Outer glow
-        g2.setColor(glowColor);
-        g2.setStroke(new BasicStroke(thickness * 1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(new java.awt.geom.Line2D.Float(x1, y1, x2, y2));
+		// Outer glow
+		g2.setColor(glowColor);
+		g2.setStroke(new BasicStroke(thickness * 1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		g2.draw(new java.awt.geom.Line2D.Float(x1, y1, x2, y2));
 
-        // Inner bright core
-        g2.setColor(coreColor);
-        g2.setStroke(new BasicStroke(thickness * 0.7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(new java.awt.geom.Line2D.Float(x1, y1, x2, y2));
+		// Inner bright core
+		g2.setColor(coreColor);
+		g2.setStroke(new BasicStroke(thickness * 0.7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		g2.draw(new java.awt.geom.Line2D.Float(x1, y1, x2, y2));
 
-        // simple glow ring at origin
-        g2.setStroke(new BasicStroke(2.5f));
-        g2.setColor(new Color(1f, 0.95f, 0.8f, Math.min(1f, alpha * 0.8f)));
-        float ringR = thickness * 1.2f;
-        g2.drawOval((int) (x1 - ringR), (int) (y1 - ringR), (int) (ringR * 2), (int) (ringR * 2));
+		// simple glow ring at origin
+		g2.setStroke(new BasicStroke(2.5f));
+		g2.setColor(new Color(1f, 0.95f, 0.8f, Math.min(1f, alpha * 0.8f)));
+		float ringR = thickness * 1.2f;
+		g2.drawOval((int) (x1 - ringR), (int) (y1 - ringR), (int) (ringR * 2), (int) (ringR * 2));
 
-        // Restore state
-        g2.setStroke(oldStroke);
-        if (oldAA != null) {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
-        }
-    }
-    /**
-     * Draw a custom “laser satellite” boss without using the sprite sheet.
-     */
-    public void drawLaserBoss(FinalBoss_3 boss) {
-        Graphics2D g2 = (Graphics2D) backBufferGraphics;
-        Stroke oldStroke = g2.getStroke();
-        Object oldAA = enableAntialiasing(g2);
+		// Restore state
+		g2.setStroke(oldStroke);
+		if (oldAA != null) {
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+		}
+	}
+	/**
+	 * Draw a custom “laser satellite” boss without using the sprite sheet.
+	 */
+	public void drawLaserBoss(FinalBoss_3 boss) {
+		Graphics2D g2 = (Graphics2D) backBufferGraphics;
+		Stroke oldStroke = g2.getStroke();
+		Object oldAA = enableAntialiasing(g2);
 
-        int cx = boss.getPositionX() + boss.getWidth() / 2;
-        int cy = boss.getPositionY() + boss.getHeight() / 2;
+		int cx = boss.getPositionX() + boss.getWidth() / 2;
+		int cy = boss.getPositionY() + boss.getHeight() / 2;
 
-        int bodyW = boss.getWidth() - 14;
-        int bodyH = boss.getHeight() - 8;
-        int rx = bodyW / 2;
-        int ry = bodyH / 2;
+		int bodyW = boss.getWidth() - 14;
+		int bodyH = boss.getHeight() - 8;
+		int rx = bodyW / 2;
+		int ry = bodyH / 2;
 
-        drawBossBody(g2, cx, cy, bodyW, bodyH, rx, ry);
-        drawBossCore(g2, boss, cx, cy, bodyW, bodyH);
-        drawBossLenses(g2, boss, cx, cy, rx, ry);
+		drawBossBody(g2, cx, cy, bodyW, bodyH, rx, ry);
+		drawBossCore(g2, boss, cx, cy, bodyW, bodyH);
+		drawBossLenses(g2, boss, cx, cy, rx, ry);
 
-        restoreGraphicsState(g2, oldStroke, oldAA);
-    }
+		restoreGraphicsState(g2, oldStroke, oldAA);
+	}
 
-    private Object enableAntialiasing(Graphics2D g2) {
-        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        return oldAA;
-    }
+	// [Add] Since Boss4 uses Graphics directly, pass backBufferGraphics through DrawManager
+	public void drawBoss4(final entity.Boss4 boss) {
+		boss.draw(backBufferGraphics);
+	}
 
-    private void restoreGraphicsState(Graphics2D g2, Stroke oldStroke, Object oldAA) {
-        g2.setStroke(oldStroke);
-        if (oldAA != null) {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
-        }
-    }
+	public void drawSamuraiBoss(screen.Screen screen, entity.SamuraiBoss boss) {
+		if (boss.getSprite() != null) {
 
-    private void drawBossBody(Graphics2D g2, int cx, int cy, int bodyW, int bodyH, int rx, int ry) {
-        g2.setColor(new Color(28, 30, 40));
-        g2.fillOval(cx - rx, cy - ry, bodyW, bodyH);
+			// 1. Calculate offset for center alignment (hitbox vs image size)
+			int offsetX = (boss.getDrawWidth() - boss.getWidth()) / 2;
+			int offsetY = (boss.getDrawHeight() - boss.getHeight()) / 2;
 
-        g2.setColor(new Color(80, 90, 110));
-        g2.setStroke(new BasicStroke(3f));
-        g2.drawOval(cx - rx, cy - ry, bodyW, bodyH);
+			// 2. Calculate actual draw position
+			int drawX = boss.getPositionX() - offsetX;
+			int drawY = boss.getPositionY() - offsetY;
 
-        drawInnerPulseRing(g2, cx, cy, bodyW, bodyH);
-    }
+			// 3. [Fix] Use drawX, drawY instead of offsetX
+			backBufferGraphics.drawImage(
+					boss.getSprite(),
+					drawX,  // <-- Fixed! (Follows boss position)
+					drawY,  // <-- Fixed!
+					boss.getDrawWidth(),
+					boss.getDrawHeight(),
+					null
+			);
+		}
 
-    private void drawInnerPulseRing(Graphics2D g2, int cx, int cy, int bodyW, int bodyH) {
-        float pulse = (float) ((Math.sin(System.currentTimeMillis() / 220.0) + 1.0) / 2.0);
-        int innerW = (int) (bodyW * 0.62f + pulse * 3f);
-        int innerH = (int) (bodyH * 0.62f + pulse * 3f);
-        g2.setColor(new Color(60, 150, 220, 180));
-        g2.setStroke(new BasicStroke(2f));
-        g2.drawOval(cx - innerW / 2, cy - innerH / 2, innerW, innerH);
-    }
+		// 4. Draw Health & Posture bars
+		// (Pass screen param to calculate width)
+		if (screen != null) {
+			drawBossHealthBar(screen, boss.getHealPoint(), boss.getMaxHealth());
+			drawBossPostureBar(screen, boss.getPosture(), boss.getMaxPosture());
 
-    private void drawBossCore(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int bodyW, int bodyH) {
-        Color coreColor = boss.isBossWaveActive() ? new Color(120, 220, 255) : new Color(90, 200, 240);
-        int coreR = (int) (Math.min(bodyW, bodyH) * 0.18f);
-        g2.setColor(coreColor);
-        g2.fillOval(cx - coreR, cy - coreR, coreR * 2, coreR * 2);
-    }
+			if (boss.isPostureBroken()) {
+				drawDeathblowMarker(screen,
+						boss.getPositionX() + boss.getWidth()/2,
+						boss.getPositionY() + boss.getHeight()/2
+				);
+			}
+		}
+	}
 
-    private void drawBossLenses(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int rx, int ry) {
-        float[] lensAnglesDeg = {0f, 90f, 180f, 270f};
-        float lensRadius = Math.min(rx, ry) * 0.78f;
-        int lensSize = 12;
-        int lensHighlightSize = 16;
+	private Object enableAntialiasing(Graphics2D g2) {
+		Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		return oldAA;
+	}
 
-        boolean[] highlightLens = buildLensHighlights(boss, lensAnglesDeg);
-        boolean forceHighlight = boss.isBossWaveActive();
+	private void restoreGraphicsState(Graphics2D g2, Stroke oldStroke, Object oldAA) {
+		g2.setStroke(oldStroke);
+		if (oldAA != null) {
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+		}
+	}
 
-        for (int i = 0; i < lensAnglesDeg.length; i++) {
-            boolean on = forceHighlight || highlightLens[i];
-            drawSingleLens(g2, cx, cy, lensAnglesDeg[i], on, lensRadius, lensSize, lensHighlightSize);
-        }
-    }
+	private void drawBossBody(Graphics2D g2, int cx, int cy, int bodyW, int bodyH, int rx, int ry) {
+		g2.setColor(new Color(28, 30, 40));
+		g2.fillOval(cx - rx, cy - ry, bodyW, bodyH);
 
-    private boolean[] buildLensHighlights(FinalBoss_3 boss, float[] lensAnglesDeg) {
-        boolean[] highlightLens = new boolean[lensAnglesDeg.length];
-        if (!boss.isLaserWarningActive()) {
-            return highlightLens;
-        }
+		g2.setColor(new Color(80, 90, 110));
+		g2.setStroke(new BasicStroke(3f));
+		g2.drawOval(cx - rx, cy - ry, bodyW, bodyH);
 
-        for (float warn : boss.getPendingWarningAngles()) {
-            markNearbyLens(warn, lensAnglesDeg, highlightLens);
-        }
-        return highlightLens;
-    }
+		drawInnerPulseRing(g2, cx, cy, bodyW, bodyH);
+	}
 
-    private void markNearbyLens(float warn, float[] lensAnglesDeg, boolean[] highlightLens) {
-        for (int i = 0; i < lensAnglesDeg.length; i++) {
-            if (isAngleWithinThreshold(warn, lensAnglesDeg[i], 30f)) {
-                highlightLens[i] = true;
-            }
-        }
-    }
+	private void drawInnerPulseRing(Graphics2D g2, int cx, int cy, int bodyW, int bodyH) {
+		float pulse = (float) ((Math.sin(System.currentTimeMillis() / 220.0) + 1.0) / 2.0);
+		int innerW = (int) (bodyW * 0.62f + pulse * 3f);
+		int innerH = (int) (bodyH * 0.62f + pulse * 3f);
+		g2.setColor(new Color(60, 150, 220, 180));
+		g2.setStroke(new BasicStroke(2f));
+		g2.drawOval(cx - innerW / 2, cy - innerH / 2, innerW, innerH);
+	}
 
-    private boolean isAngleWithinThreshold(float angle, float target, float threshold) {
-        float normalized = ((angle % 360) + 360) % 360;
-        float diff = Math.abs(normalized - target);
-        diff = Math.min(diff, 360 - diff);
-        return diff <= threshold;
-    }
+	private void drawBossCore(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int bodyW, int bodyH) {
+		Color coreColor = boss.isBossWaveActive() ? new Color(120, 220, 255) : new Color(90, 200, 240);
+		int coreR = (int) (Math.min(bodyW, bodyH) * 0.18f);
+		g2.setColor(coreColor);
+		g2.fillOval(cx - coreR, cy - coreR, coreR * 2, coreR * 2);
+	}
 
-    private void drawSingleLens(Graphics2D g2, int cx, int cy, float angleDeg, boolean highlight, float lensRadius, int lensSize, int lensHighlightSize) {
-        double rad = Math.toRadians(angleDeg);
-        int lx = (int) (cx + Math.cos(rad) * lensRadius);
-        int ly = (int) (cy + Math.sin(rad) * lensRadius);
+	private void drawBossLenses(Graphics2D g2, FinalBoss_3 boss, int cx, int cy, int rx, int ry) {
+		float[] lensAnglesDeg = {0f, 90f, 180f, 270f};
+		float lensRadius = Math.min(rx, ry) * 0.78f;
+		int lensSize = 12;
+		int lensHighlightSize = 16;
 
-        Color lensCore = highlight ? new Color(140, 240, 255) : new Color(70, 150, 210);
-        Color lensRing = highlight ? new Color(110, 200, 255) : new Color(60, 110, 160);
+		boolean[] highlightLens = buildLensHighlights(boss, lensAnglesDeg);
+		boolean forceHighlight = boss.isBossWaveActive();
 
-        int size = highlight ? lensHighlightSize : lensSize;
-        g2.setColor(lensRing);
-        g2.fillOval(lx - size / 2, ly - size / 2, size, size);
+		for (int i = 0; i < lensAnglesDeg.length; i++) {
+			boolean on = forceHighlight || highlightLens[i];
+			drawSingleLens(g2, cx, cy, lensAnglesDeg[i], on, lensRadius, lensSize, lensHighlightSize);
+		}
+	}
 
-        g2.setColor(lensCore);
-        g2.fillOval(lx - (size - 6) / 2, ly - (size - 6) / 2, size - 6, size - 6);
-    }
-    public void drawLaserWarningLine(float originX, float originY, float angle) {
-        drawLaserWarningLine(originX, originY, angle, new Color(0, 255, 255, 180));
-    }
-    public void drawLaserWarningLine(float originX, float originY, float angle, Color color) {
-        Graphics2D g2 = (Graphics2D) backBufferGraphics;
+	private boolean[] buildLensHighlights(FinalBoss_3 boss, float[] lensAnglesDeg) {
+		boolean[] highlightLens = new boolean[lensAnglesDeg.length];
+		if (!boss.isLaserWarningActive()) {
+			return highlightLens;
+		}
 
-        float[] dashPattern = {6f, 6f};
-        g2.setStroke(new BasicStroke(
-                2f,
-                BasicStroke.CAP_ROUND,
-                BasicStroke.JOIN_ROUND,
-                10f,
-                dashPattern,
-                0f
-        ));
+		for (float warn : boss.getPendingWarningAngles()) {
+			markNearbyLens(warn, lensAnglesDeg, highlightLens);
+		}
+		return highlightLens;
+	}
 
-        g2.setColor(color);
-        float length = 2000f;
-        float rad = (float) Math.toRadians(angle);
+	private void markNearbyLens(float warn, float[] lensAnglesDeg, boolean[] highlightLens) {
+		for (int i = 0; i < lensAnglesDeg.length; i++) {
+			if (isAngleWithinThreshold(warn, lensAnglesDeg[i], 30f)) {
+				highlightLens[i] = true;
+			}
+		}
+	}
 
-        float x2 = (float) (originX + Math.cos(rad) * length);
-        float y2 = (float) (originY + Math.sin(rad) * length);
+	private boolean isAngleWithinThreshold(float angle, float target, float threshold) {
+		float normalized = ((angle % 360) + 360) % 360;
+		float diff = Math.abs(normalized - target);
+		diff = Math.min(diff, 360 - diff);
+		return diff <= threshold;
+	}
 
-        g2.drawLine((int)originX, (int)originY, (int)x2, (int)y2);
-        // Stroke 초기화
-        g2.setStroke(new BasicStroke(1f));
-    }
-    public void drawPauseOverlay(final screen.Screen screen) {
-        backBufferGraphics.setColor(new java.awt.Color(0, 0, 0, 150));
-        backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight());
-    }
-    public void drawPauseMenu(final screen.Screen screen, final int menuIndex) {
-        String[] menu = { "Quit Game", "Restart", "Return" };
+	private void drawSingleLens(Graphics2D g2, int cx, int cy, float angleDeg, boolean highlight, float lensRadius, int lensSize, int lensHighlightSize) {
+		double rad = Math.toRadians(angleDeg);
+		int lx = (int) (cx + Math.cos(rad) * lensRadius);
+		int ly = (int) (cy + Math.sin(rad) * lensRadius);
 
-        backBufferGraphics.setFont(fontBig);
+		Color lensCore = highlight ? new Color(140, 240, 255) : new Color(70, 150, 210);
+		Color lensRing = highlight ? new Color(110, 200, 255) : new Color(60, 110, 160);
 
-        // Position menu slightly above center.
-        int centerX = screen.getWidth() / 2;
-        int baseCenterY = screen.getHeight() / 2 - 40;
+		int size = highlight ? lensHighlightSize : lensSize;
+		g2.setColor(lensRing);
+		g2.fillOval(lx - size / 2, ly - size / 2, size, size);
 
-        // Simple drop-in animation: reset progress if menu has been closed for a bit.
-        long now = System.currentTimeMillis();
-        if (now - lastPauseMenuDrawTime > 300) {
-            pauseMenuAnimProgress = 0f;
-        }
-        pauseMenuAnimProgress = Math.min(1f, pauseMenuAnimProgress + 0.12f);
-        lastPauseMenuDrawTime = now;
-        // Start higher and ease to the target.
-        int centerY = baseCenterY + (int) ((1f - pauseMenuAnimProgress) * -40);
+		g2.setColor(lensCore);
+		g2.fillOval(lx - (size - 6) / 2, ly - (size - 6) / 2, size - 6, size - 6);
+	}
+	public void drawLaserWarningLine(float originX, float originY, float angle) {
+		drawLaserWarningLine(originX, originY, angle, new Color(0, 255, 255, 180));
+	}
+	public void drawLaserWarningLine(float originX, float originY, float angle, Color color) {
+		Graphics2D g2 = (Graphics2D) backBufferGraphics;
 
-        // Measure widest text to size the container.
-        int maxTextWidth = 0;
-        for (String text : menu) {
-            maxTextWidth = Math.max(maxTextWidth, fontBigMetrics.stringWidth(text));
-        }
+		float[] dashPattern = {6f, 6f};
+		g2.setStroke(new BasicStroke(
+				2f,
+				BasicStroke.CAP_ROUND,
+				BasicStroke.JOIN_ROUND,
+				10f,
+				dashPattern,
+				0f
+		));
 
-        int lineHeight = fontBigMetrics.getHeight();
-        int itemSpacing = 40;
-        int boxPadding = 24;
-        int boxWidth = maxTextWidth + boxPadding * 2;
-        int boxHeight = itemSpacing * menu.length + boxPadding;
+		g2.setColor(color);
+		float length = 2000f;
+		float rad = (float) Math.toRadians(angle);
 
-        int boxX = centerX - boxWidth / 2;
-        int boxY = centerY - boxHeight / 2;
+		float x2 = (float) (originX + Math.cos(rad) * length);
+		float y2 = (float) (originY + Math.sin(rad) * length);
 
-        // Draw container with semi-transparent fill and border.
-        backBufferGraphics.setColor(new java.awt.Color(0, 0, 0, 180));
-        backBufferGraphics.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 16, 16);
-        // Border uses game accent green.
-        backBufferGraphics.setColor(new java.awt.Color(0, 200, 70, 200));
-        backBufferGraphics.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 16, 16);
+		g2.drawLine((int)originX, (int)originY, (int)x2, (int)y2);
+		// Stroke initialization
+		g2.setStroke(new BasicStroke(1f));
+	}
+	/**
+	 * Draws a simple colored rectangle (useful for UI, Minimap).
+	 */
+	public void drawRectangle(final int x, final int y, final int width, final int height, final Color color) {
+		backBufferGraphics.setColor(color);
+		backBufferGraphics.fillRect(x, y, width, height);
+		// Uncomment below to draw border
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.drawRect(x, y, width, height);
+	}
 
-        for (int i = 0; i < menu.length; i++) {
-            if (i == menuIndex)
-                backBufferGraphics.setColor(java.awt.Color.YELLOW);
-            else
-                backBufferGraphics.setColor(java.awt.Color.WHITE);
+	public void drawGameModeSelection(final screen.Screen screen, final int selection) {
+		backBufferGraphics.setColor(Color.GREEN);
+		drawCenteredBigString(screen, "SELECT  GAME  MODE", 160);
 
-            String text = menu[i];
-            int width = fontBigMetrics.stringWidth(text);
-            int y = boxY + boxPadding + (i * itemSpacing) + lineHeight / 2;
+		float pulse = (float) ((Math.sin(System.currentTimeMillis() / 200.0) + 1.0) / 2.0);
+		Color pulseColor = new Color(0, 0.5f + pulse * 0.5f, 0);
 
-            backBufferGraphics.drawString(text, centerX - width / 2, y);
-        }
-    }
+		if (selection == 0) backBufferGraphics.setColor(pulseColor);
+		else backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, " CLASSIC MODE ", 230);
+
+		if (selection == 1) backBufferGraphics.setColor(pulseColor);
+		else backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, " SANDBOX MODE ", 270);
+
+		if (selection == 2) backBufferGraphics.setColor(pulseColor);
+		else backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, "< BACK TO MAIN MENU >", 310);
+
+		int y1 = 230;
+		int y2 = 270;
+		int mid1 = y1 - fontRegularMetrics.getAscent() / 2;
+		int mid2 = y2 - fontRegularMetrics.getAscent() / 2;
+
+
+		int centerX = screen.getWidth() / 2;
+		int textW1 = fontRegularMetrics.stringWidth(" 1 PLAYER ");
+		int textW2 = fontRegularMetrics.stringWidth(" 2 PLAYER ");
+		int gap = 10;
+		int shipGap = 12;
+
+		int textLeft1 = centerX - textW1 / 2;
+
+		int textLeft2 = centerX - textW2 / 2;
+
+		backBufferGraphics.setColor(Color.GRAY);
+		drawCenteredRegularString(screen, "Press SPACE TO CONFIRM", 370);
+	}
+
+	public void drawPauseOverlay(final screen.Screen screen) {
+		backBufferGraphics.setColor(new java.awt.Color(0, 0, 0, 150));
+		backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+	}
+	public void drawPauseMenu(final screen.Screen screen, final int menuIndex) {
+		String[] menu = { "Quit Game", "Restart", "Return" };
+
+		backBufferGraphics.setFont(fontBig);
+
+		// Position menu slightly above center.
+		int centerX = screen.getWidth() / 2;
+		int baseCenterY = screen.getHeight() / 2 - 40;
+
+		// Simple drop-in animation: reset progress if menu has been closed for a bit.
+		long now = System.currentTimeMillis();
+		if (now - lastPauseMenuDrawTime > 300) {
+			pauseMenuAnimProgress = 0f;
+		}
+		pauseMenuAnimProgress = Math.min(1f, pauseMenuAnimProgress + 0.12f);
+		lastPauseMenuDrawTime = now;
+		// Start higher and ease to the target.
+		int centerY = baseCenterY + (int) ((1f - pauseMenuAnimProgress) * -40);
+
+		// Measure widest text to size the container.
+		int maxTextWidth = 0;
+		for (String text : menu) {
+			maxTextWidth = Math.max(maxTextWidth, fontBigMetrics.stringWidth(text));
+		}
+
+		int lineHeight = fontBigMetrics.getHeight();
+		int itemSpacing = 40;
+		int boxPadding = 24;
+		int boxWidth = maxTextWidth + boxPadding * 2;
+		int boxHeight = itemSpacing * menu.length + boxPadding;
+
+		int boxX = centerX - boxWidth / 2;
+		int boxY = centerY - boxHeight / 2;
+
+		// Draw container with semi-transparent fill and border.
+		backBufferGraphics.setColor(new java.awt.Color(0, 0, 0, 180));
+		backBufferGraphics.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 16, 16);
+		// Border uses game accent green.
+		backBufferGraphics.setColor(new java.awt.Color(0, 200, 70, 200));
+		backBufferGraphics.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 16, 16);
+
+		for (int i = 0; i < menu.length; i++) {
+			if (i == menuIndex)
+				backBufferGraphics.setColor(java.awt.Color.YELLOW);
+			else
+				backBufferGraphics.setColor(java.awt.Color.WHITE);
+
+			String text = menu[i];
+			int width = fontBigMetrics.stringWidth(text);
+			int y = boxY + boxPadding + (i * itemSpacing) + lineHeight / 2;
+
+			backBufferGraphics.drawString(text, centerX - width / 2, y);
+		}
+	}
 
 }
