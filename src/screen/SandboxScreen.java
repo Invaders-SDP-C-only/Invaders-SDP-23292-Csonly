@@ -153,6 +153,12 @@ public class SandboxScreen extends Screen {
     private long p1ShotBufferTimer = 0;
     private long p2ShotBufferTimer = 0;
     private static final long INPUT_BUFFER_DURATION = 150; // 0.15s
+    /** Current checkpoint positions. */
+    private int checkpointRow = 2;
+    private int checkpointCol = 2;
+    /** Helper for death production.*/
+    private boolean isRespawning = false;
+    private Cooldown respawnDelay;
 
     /**
      * Returns the Y-coordinate of the bottom boundary.
@@ -245,6 +251,7 @@ public class SandboxScreen extends Screen {
         this.startRow = startRow;
         this.startCol = startCol;
         this.particles = new ArrayList<>();
+        this.respawnDelay = Core.getCooldown(3000);
 
         // Load Shop Image (Bonfire)
         try {
@@ -348,7 +355,20 @@ public class SandboxScreen extends Screen {
                 // 3. Create Room Object
                 map[row][col] = new Room(row, col, type, formation, levelNum);
 
-                // 4. Add Coins to Normal Rooms
+                // 4. Add Items to Rooms.
+                if (type != RoomType.START && Math.random() < 0.3) {
+                    int count = 1 + random.nextInt(3);
+                    for(int i=0; i<count; i++) {
+                        DropItem.ItemType[] types = DropItem.ItemType.values();
+                        DropItem.ItemType randType = types[random.nextInt(types.length)];
+                        int rx = 50 + random.nextInt(width - 100);
+                        int ry = 100 + random.nextInt(height - 200);
+                        DropItem item = ItemPool.getItem(rx, ry, 0, randType); // 속도 0 (가만히 있음)
+                        map[row][col].getItems().add(item);
+                    }
+                }
+
+                // 5. Add Coins to Normal Rooms
                 if (type == RoomType.NORMAL) {
                     int coinCount = 3 + (int)(Math.random() * 3);
                     for(int k=0; k<coinCount; k++) {
@@ -358,12 +378,12 @@ public class SandboxScreen extends Screen {
                     }
                 }
 
-                // 5. Restore Cleared Status from Persistence
+                // 6. Restore Cleared Status from Persistence
                 String key = row + "," + col;
                 if (type == RoomType.BOSS && clearedBossRooms.contains(key)) map[row][col].setCleared(true);
                 else if (type == RoomType.NORMAL && clearedRooms.contains(key)) map[row][col].setCleared(true);
 
-                // 6. Add Shop (Bonfire) to Start Room
+                // 7. Add Shop (Bonfire) to Start Room
                 if (type == RoomType.START) {
                     map[row][col].addBonfire(width, height);
                     if (this.shopImage != null && map[row][col].getBonfire() != null) {
@@ -402,6 +422,16 @@ public class SandboxScreen extends Screen {
     @Override
     protected void update() {
         super.update();
+
+        // When respawning
+        if (isRespawning) {
+            if (respawnDelay.checkFinished()) {
+                respawnAtCheckpoint();
+                isRespawning = false;
+            }
+            return; // stop the game logic.
+        }
+
         if (!this.inputDelay.checkFinished() || isGameOver) return;
 
         // Toggle Pause
@@ -479,7 +509,8 @@ public class SandboxScreen extends Screen {
         if (this.shipP2 != null) this.shipP2.update();
 
         Room room = getCurrentRoom();
-        room.update();
+        room.getItems().clear();
+        room.getItems().addAll(this.dropItems);
 
         // Coin Collection Logic
         List<Coin> roomCoins = room.getCoins();
@@ -538,6 +569,28 @@ public class SandboxScreen extends Screen {
             room.getEnemyFormation().shoot(this.bullets);
         }
 
+        if (room.getType() == RoomType.BOSS && this.currentBoss != null && !room.isCleared()) {
+            if (currentBoss instanceof SamuraiBoss) sekiroBossManage();
+            else if (currentBoss instanceof TrueFinalBoss) {
+                TrueFinalBoss tfb = (TrueFinalBoss) currentBoss;
+                if (tfb.isDestroyed()) handleBossDeath(room);
+                else {
+                    tfb.update();
+                    bossBullets.addAll(tfb.shoot()); }
+            } else updateCurrentBoss();
+        }
+        else if (room.getEnemyFormation() != null) {
+            room.getEnemyFormation().update();
+            if (!room.getEnemyFormation().isEmpty()) {
+                room.getEnemyFormation().shoot(this.bullets);
+            } else {
+                if (!room.isCleared()) {
+                    room.setCleared(true);
+                    logger.info("Room Cleared!");
+                }
+            }
+        }
+
         if (laserBeamManager != null) laserBeamManager.update();
 
         // Hit Stop Logic (Freeze frame for impact)
@@ -558,6 +611,8 @@ public class SandboxScreen extends Screen {
                 particles.remove(i--);
             }
         }
+
+
 
         manageInteractions(room);
         manageCollisions(room);
@@ -737,6 +792,7 @@ public class SandboxScreen extends Screen {
         this.bullets.clear();
         this.swordWaves.clear();
         this.bossBullets.clear();
+        this.dropItems = new HashSet<>();
 
         this.currentBoss = null;
         this.samuraiBoss = null;
@@ -773,7 +829,15 @@ public class SandboxScreen extends Screen {
         }
 
         Room room = getCurrentRoom();
+        this.dropItems.addAll(room.getItems());
         SoundManager.stopAll();
+
+        // Save the checkpoint room.
+        if (room.getBonfire() != null || room.getType() == RoomType.START) {
+            this.checkpointRow = currentRoomRow;
+            this.checkpointCol = currentRoomCol;
+            logger.info("Checkpoint Saved at: " + currentRoomRow + "," + currentRoomCol);
+        }
 
         if (currentRoomRow == 2 && currentRoomCol == MAP_SIZE - 1) {
             ship.setMeleeMode(true);
@@ -1071,6 +1135,11 @@ public class SandboxScreen extends Screen {
 
         if (clearedBossRooms.size() == 4) {
             logger.info("4 Bosses Defeated! Go to Center!");
+            triggerImpactEffect(width/2, height/2, 10, 0, Color.RED);
+            this.instructionMessage = "THE FINAL BOSS HAS AWAKENED!";
+            this.instructionCooldown = Core.getCooldown(5000);
+            this.instructionCooldown.reset();
+            SoundManager.play("sfx/boss-appear.wav");
         }
     }
 
@@ -1291,10 +1360,30 @@ public class SandboxScreen extends Screen {
      */
     private void checkGameOver() {
         if (livesP1 <= 0 && (shipP2 == null || livesP2 <= 0)) {
-            isGameOver = true;
-            this.returnCode = 2;
-            this.isRunning = false;
+            if (isRespawning) return;
+            isRespawning = true;
+            respawnDelay.reset();
+            SoundManager.stopAll();
+            SoundManager.play("sfx/youdied.wav");
+            logger.info("YOU DIED. Respawning soon...");
         }
+    }
+
+    /**
+     * Respawning the players when all lives lost.
+     */
+    private void respawnAtCheckpoint() {
+        this.currentRoomRow = this.checkpointRow;
+        this.currentRoomCol = this.checkpointCol;
+        this.livesP1 = 3;
+        if (this.shipP2 != null) this.livesP2 = 3;
+        this.ship = new Ship(this.width / 2 - 20, this.height / 2, Color.GREEN);
+        this.ship.setPlayerId(1);
+        if (this.shipP2 != null) {
+            this.shipP2 = new Ship(this.width / 2 + 20, this.height / 2, Color.PINK);
+            this.shipP2.setPlayerId(2);
+        }
+        enterRoom(false);
     }
 
     /**
@@ -1329,6 +1418,19 @@ public class SandboxScreen extends Screen {
     private void draw() {
         drawManager.initDrawing(this);
         Graphics2D g = (Graphics2D) drawManager.getBackBufferGraphics();
+
+        // Draw death screen.
+        if (isRespawning) {
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, width, height);
+            g.setColor(Color.RED);
+            g.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 40));
+            String text = "YOU DIED";
+            int tw = g.getFontMetrics().stringWidth(text);
+            g.drawString(text, width/2 - tw/2, height/2);
+            drawManager.completeDrawing(this);
+            return;
+        }
 
         // Apply Screen Shake
         int dx = 0, dy = 0;

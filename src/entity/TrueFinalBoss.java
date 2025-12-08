@@ -168,7 +168,7 @@ public class TrueFinalBoss extends Entity implements BossEntity {
         if (!isPhase2 && health <= maxHealth / 2) {
             isPhase2 = true;
             // SoundManager.play("sfx/boss_enrage.wav"); // Optional sound
-            this.bulletCooldown = Core.getCooldown(80); // Faster shooting
+            this.bulletCooldown = Core.getCooldown(120); // Faster shooting
         }
 
         // === Posture Recovery Logic ===

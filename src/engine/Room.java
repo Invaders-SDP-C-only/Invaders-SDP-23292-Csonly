@@ -3,10 +3,14 @@ package engine;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+
 import entity.EnemyShipFormation;
 import entity.Entity;
-import entity.BonFire; // [Important] Uses the new entity.Bonfire class
-import entity.Coin;    // [Added] Coin entity
+import entity.BonFire;
+import entity.Coin;
+import entity.DropItem;
 
 /**
  * Manages individual rooms within the Sandbox Mode map.
@@ -63,6 +67,8 @@ public class Room {
     private int levelNumber;
     /** Index for normal room background music (randomized). -1 if not set. */
     private int normalBgmIndex = -1;
+    /** Set to contain items created in the rooms.*/
+    private Set<DropItem> items;
 
     /**
      * Constructor, initializes the room properties.
@@ -86,6 +92,7 @@ public class Room {
         this.doors = new ArrayList<>();
         this.normalBgmIndex = -1;
         this.coins = new ArrayList<>();
+        this.items = new HashSet<>();
     }
 
     /**
@@ -109,6 +116,17 @@ public class Room {
     public void addCoin(int x, int y) {
         this.coins.add(new Coin(x, y));
     }
+
+    /**
+     * Item management methods of get the items.
+     */
+    public Set<DropItem> getItems() { return this.items; }
+
+    /**
+     * Item management methods of setting the items.
+     * @param items Set to contain items created in the rooms.
+     */
+    public void setItems(Set<DropItem> items) { this.items = items; }
 
     /**
      * Returns the list of coins in the room.
