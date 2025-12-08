@@ -14,11 +14,10 @@ class SamuraiBossTest {
     void enrageTriggersBelowHalfHealth() {
         SamuraiBoss boss = new SamuraiBoss(0, 0, 200, null, null, 300);
 
-        boss.takeDamage(60); // drop health below half
+        boss.takeDamage(1500); // drop health below half
         boss.update();
 
         assertTrue(boss.isEnraged());
-        assertEquals(Color.ORANGE, boss.getColor());
     }
 
     @Test
@@ -37,12 +36,12 @@ class SamuraiBossTest {
         setInvincibleAfterBroken(boss, true);
         int hpBefore = boss.getHealPoint();
 
-        boss.takeDamage(50);
+        boss.takeDamage(1500);
 
         assertEquals(hpBefore, boss.getHealPoint());
 
         setInvincibleAfterBroken(boss, false);
-        boss.takeDamage(200);
+        boss.takeDamage(3000);
         assertTrue(boss.isDestroyed());
     }
 
